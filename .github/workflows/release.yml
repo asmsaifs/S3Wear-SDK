@@ -1,0 +1,98 @@
+# Release: a tag vX.Y.Z publishes the CLI to PyPI (as `s3w`) and the crates to crates.io. Exported from
+# the private repo (tools/sdk/public/), not edited here.
+#
+# One-time setup (owner):
+#   PyPI:      pypi.org -> your project (or "pending publisher" for the first upload) -> Publishing ->
+#              add a trusted publisher: owner asmsaifs, repo S3Wear-SDK, workflow release.yml,
+#              environment pypi. No token is stored.
+#   crates.io: create an API token (scopes publish-new, publish-update) and store it as the secret
+#              CARGO_REGISTRY_TOKEN in the GitHub environment "crates".
+#   GitHub:    Settings -> Environments -> create "pypi" and "crates"; add yourself as required reviewer
+#              so every release waits for a click.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Tag matches the package versions
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          tag="${GITHUB_REF_NAME#v}"
+          py="$(sed -n 's/^version = "\(.*\)"/\1/p' cli/pyproject.toml | head -1)"
+          sys="$(sed -n 's/^version = "\(.*\)"/\1/p' rust/s3w-sys/Cargo.toml | head -1)"
+          safe="$(sed -n 's/^version = "\(.*\)"/\1/p' rust/s3w/Cargo.toml | head -1)"
+          echo "tag=$tag cli=$py s3w-sys=$sys s3w=$safe"
+          [ "$tag" = "$py" ] && [ "$tag" = "$sys" ] && [ "$tag" = "$safe" ] || { echo "version mismatch" >&2; exit 1; }
+
+  build:
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist and wheel (with the vendored SDK)
+        run: |
+          cli/vendor_sdk.sh
+          python3 -m pip install build
+          python3 -m build cli
+      - name: The wheel carries the SDK
+        run: |
+          unzip -l cli/dist/*.whl | grep -q '_sdk/include/s3w.h'
+          unzip -l cli/dist/*.whl | grep -q '_sdk/templates/c/manifest.json'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: cli/dist/
+
+  pypi:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: pypi
+    permissions:
+      id-token: write   # PyPI trusted publishing (OIDC), no stored token
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  crates:
+    needs: check
+    runs-on: ubuntu-24.04
+    environment: crates
+    env:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup target add wasm32-unknown-unknown
+      - name: Publish s3w-sys
+        run: cargo publish --manifest-path rust/s3w-sys/Cargo.toml
+      - name: Publish s3w (waits for s3w-sys to appear in the index)
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if cargo publish --manifest-path rust/s3w/Cargo.toml; then exit 0; fi
+            echo "retry $i in 20 s"; sleep 20
+          done
+          exit 1
+
+  github-release:
+    needs: [pypi, crates]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "SDK $GITHUB_REF_NAME" --notes-file CHANGELOG.md
