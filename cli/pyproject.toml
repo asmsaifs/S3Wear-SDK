@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "s3w"
+version = "0.1.0"
+description = "S3Wear mini app CLI: new, build, pack, sign, run-sim, install, logs"
+requires-python = ">=3.9"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+dependencies = ["pyserial>=3.5"]
+
+[project.scripts]
+s3w = "s3w_cli.cli:main"
+
+[project.urls]
+Homepage = "https://s3wear.fiqraat.com/developers/"
+Source = "https://github.com/asmsaifs/S3Wear-SDK"
+
+[tool.setuptools]
+packages = ["s3w_cli"]
+
+# _sdk/ (s3w.h, templates, crates) is copied in by cli/vendor_sdk.sh before building the wheel.
+[tool.setuptools.package-data]
+s3w_cli = ["_sdk/**/*"]

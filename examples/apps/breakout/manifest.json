@@ -1,0 +1,13 @@
+{
+  "id": "dev.s3wear.breakout",
+  "name": "Breakout",
+  "version": "1.0.0",
+  "api_level": 1,
+  "category": "game",
+  "author": "S3Wear",
+  "description": "Clear the bricks: drag or tilt the paddle.",
+  "entry": "app.wasm",
+  "ui_mode": "canvas",
+  "memory_kb": 64,
+  "permissions": ["imu", "audio.play", "keep_screen_on"]
+}

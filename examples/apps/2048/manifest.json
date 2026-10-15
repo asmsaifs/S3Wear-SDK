@@ -1,0 +1,13 @@
+{
+  "id": "dev.s3wear.2048",
+  "name": "2048",
+  "version": "1.0.0",
+  "api_level": 1,
+  "category": "game",
+  "author": "S3Wear",
+  "description": "Slide the tiles, merge equal numbers, reach 2048.",
+  "entry": "app.wasm",
+  "ui_mode": "canvas",
+  "memory_kb": 64,
+  "permissions": ["audio.play", "keep_screen_on"]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "dev.s3wear.snake",
+  "name": "Snake",
+  "version": "1.0.0",
+  "api_level": 1,
+  "category": "game",
+  "author": "S3Wear",
+  "description": "Classic snake: swipe or tilt to steer.",
+  "entry": "app.wasm",
+  "ui_mode": "canvas",
+  "memory_kb": 64,
+  "permissions": ["imu", "audio.play", "keep_screen_on"]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "dev.s3wear.pomodoro",
+  "name": "Pomodoro",
+  "version": "1.0.0",
+  "api_level": 1,
+  "category": "tool",
+  "author": "S3Wear",
+  "description": "25-minute focus sessions with short and long breaks.",
+  "entry": "app.wasm",
+  "ui_mode": "widgets",
+  "memory_kb": 64,
+  "permissions": ["notify", "audio.play", "keep_screen_on"]
+}

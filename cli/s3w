@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Runs the s3w CLI from this checkout (no install needed): sdk/tools/s3w-cli/s3w <command> ...
+# Python 3.9+; install/logs need pyserial. $S3W_PYTHON picks the interpreter.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHONPATH="$here${PYTHONPATH:+:$PYTHONPATH}" exec "${S3W_PYTHON:-python3}" -m s3w_cli "$@"

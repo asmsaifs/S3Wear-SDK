@@ -1,0 +1,9 @@
+build/
+target/
+__pycache__/
+*.s3app
+*.s3face
+cli/s3w_cli/_sdk/
+cli/dist/
+*.egg-info/
+.DS_Store

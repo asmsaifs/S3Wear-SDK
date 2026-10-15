@@ -1,0 +1,13 @@
+S3Wear Simulator — freeware licence (DRAFT, pending owner and legal review: P16-08)
+
+The simulator binary (s3w_sim) is distributed as a binary only. You may:
+  - download, install and run it for any purpose, including commercial development of S3Wear apps
+    and watch faces;
+  - use screenshots and recordings it produces.
+You may not:
+  - redistribute the binary except through the official download location;
+  - reverse engineer, decompile or disassemble it, or extract data from it, except where the law
+    allows this despite this clause;
+  - use it to build a competing product.
+The binary is provided "as is", without warranty of any kind. The licensor is not liable for any
+damage arising from its use. This licence ends if you break its terms.

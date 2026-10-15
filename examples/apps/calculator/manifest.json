@@ -1,0 +1,13 @@
+{
+  "id": "dev.s3wear.calculator",
+  "name": "Calculator",
+  "version": "1.0.0",
+  "api_level": 1,
+  "category": "tool",
+  "author": "S3Wear",
+  "description": "Four-function calculator with a history of the last ten results.",
+  "entry": "app.wasm",
+  "ui_mode": "widgets",
+  "memory_kb": 64,
+  "permissions": []
+}

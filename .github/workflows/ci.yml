@@ -1,0 +1,55 @@
+# SDK CI: builds every example and every template, runs the CLI tests. Exported from the private
+# repo (tools/sdk/public/), not edited here. Moves into the dev container with P16-03.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld
+          rustup target add wasm32-unknown-unknown
+
+      - name: CLI tests
+        run: python3 -m unittest discover -s cli/tests
+
+      - name: Examples
+        run: examples/build.sh
+
+      - name: Sample apps
+        run: |
+          for d in examples/apps/*/; do
+            [ -f "$d/manifest.json" ] || continue
+            cli/s3w build "$d"
+          done
+
+      - name: Templates (C and Rust)
+        run: |
+          cli/s3w new "$RUNNER_TEMP/tpl-c" --lang c
+          cli/s3w build "$RUNNER_TEMP/tpl-c"
+          cli/s3w new "$RUNNER_TEMP/tpl-rust" --lang rust
+          cli/s3w build "$RUNNER_TEMP/tpl-rust"
+
+      - name: Wheel (what `pipx install s3w` gets)
+        run: |
+          cli/vendor_sdk.sh
+          python3 -m venv "$RUNNER_TEMP/v"
+          "$RUNNER_TEMP/v/bin/pip" install ./cli
+          cd "$RUNNER_TEMP" && "$RUNNER_TEMP/v/bin/s3w" new wheel-app && "$RUNNER_TEMP/v/bin/s3w" build wheel-app
+
+      - name: Crates
+        run: |
+          cargo build --manifest-path rust/s3w/Cargo.toml --target wasm32-unknown-unknown
