@@ -1,0 +1,62 @@
+{
+  "id": "dev.you.images",
+  "name": "Images",
+  "version": "1.0.0",
+  "api": 1,
+  "author": "S3Wear",
+  "description": "A face with a background picture, a badge and two hands made of pictures.",
+  "background": "bg.png",
+  "elements": [
+    {
+      "type": "image",
+      "image": "badge.png",
+      "x": 205,
+      "y": 120
+    },
+    {
+      "type": "text",
+      "bind": "time.hh:mm",
+      "x": 205,
+      "y": 400,
+      "font": "title_32",
+      "color": "#FFFFFF"
+    },
+    {
+      "type": "hand",
+      "bind": "time.hour",
+      "x": 205,
+      "y": 251,
+      "image": "hour.png",
+      "pivot": [
+        14,
+        100
+      ]
+    },
+    {
+      "type": "hand",
+      "bind": "time.minute",
+      "x": 205,
+      "y": 251,
+      "image": "minute.png"
+    },
+    {
+      "type": "circle",
+      "x": 205,
+      "y": 251,
+      "r": 7,
+      "color": "#FF453A"
+    }
+  ],
+  "aod": {
+    "elements": [
+      {
+        "type": "text",
+        "bind": "time.hh:mm",
+        "x": 205,
+        "y": 251,
+        "font": "digits_96_light",
+        "color": "#6E6E73"
+      }
+    ]
+  }
+}

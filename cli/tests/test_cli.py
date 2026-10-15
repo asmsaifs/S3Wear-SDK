@@ -4,6 +4,7 @@
   (ctest --test-dir build/sim runs them with S3W_SIM set)
 
 Toolchain tests skip without clang (wasm32) / cargo + the wasm32 target / the simulator."""
+import json
 import os
 import shutil
 import subprocess
@@ -17,7 +18,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
-from s3w_cli import cli, s3app  # noqa: E402
+from s3w_cli import cli, s3app, s3face  # noqa: E402
 from s3w_cli.project import SDK, BuildError, Project, check_icon, find_clang, module_info  # noqa: E402
 
 
@@ -200,6 +201,117 @@ class Faces(unittest.TestCase):
         (self.dir / "face.json").write_text(self.FACE)
         (self.dir / "notes.txt").write_text("x")  # a face is face.json and its images
         self.assertEqual(cli.main(["face", "build", str(self.dir), "--unsigned"]), 1)
+
+
+def make_png(w, h, ctype=6, depth=8, damage=None):
+    """A valid PNG of w x h (RGBA by default, all transparent); `damage` names what to break."""
+    import struct
+    import zlib
+
+    channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[ctype]
+    stride = (w * channels * depth + 7) // 8
+    raw = b"".join(b"\0" + bytes(stride) for _ in range(h))
+    if damage == "size":
+        raw = raw[:-3]
+    idat = zlib.compress(raw)
+    if damage == "inflate":
+        idat = idat[:-6]
+
+    def chunk(tag, data, crc=None):
+        c = zlib.crc32(tag + data) & 0xFFFFFFFF if crc is None else crc
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", c)
+
+    out = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, depth, ctype, 0, 0, 0))
+    out += chunk(b"IDAT", idat, 0 if damage == "crc" else None) + chunk(b"IEND", b"")
+    return out[:-20] if damage == "truncated" else out
+
+
+class FaceImages(unittest.TestCase):
+    """Pictures in a face (P16-07): the checks the watch's decoder makes, before the package is made."""
+
+    def test_valid_pictures_pass(self):
+        for ctype, depth in ((6, 8), (2, 8), (0, 8), (4, 8), (6, 16), (0, 1)):
+            self.assertEqual(s3face.png_check("x.png", make_png(20, 30, ctype, depth)), (20, 30), (ctype, depth))
+
+    def test_damaged_pictures_are_refused_with_the_reason(self):
+        for damage, why in (("crc", "CRC"), ("size", "wrong size"), ("inflate", "damaged image data"), ("truncated", "truncated")):
+            with self.assertRaises(BuildError, msg=damage) as e:
+                s3face.png_check("x.png", make_png(20, 30, damage=damage))
+            self.assertIn(why, str(e.exception), damage)
+        with self.assertRaises(BuildError):
+            s3face.png_check("x.png", b"GIF89a" + bytes(40))
+
+    def files(self, **images):
+        files = {"face.json": b"{}", s3face.PREVIEW: make_png(*s3face.PREVIEW_SIZE)}
+        files.update({name: make_png(*size) for name, size in images.items()})
+        return files
+
+    def test_check_files_limits(self):
+        s3face.check_files(self.files(**{"bg.png": (410, 502), "hand.png": (20, 170)}), ["bg.png", "hand.png"])
+        with self.assertRaisesRegex(BuildError, "not supported"):
+            s3face.check_files(self.files(**{"big.png": (1025, 10)}), ["big.png"])
+        with self.assertRaisesRegex(BuildError, "pixels"):
+            s3face.check_files(self.files(**{"wide.png": (1000, 600)}), ["wide.png"])
+
+    def test_the_pictures_together_must_fit_the_watch_cache(self):
+        # three 500 x 400 pictures are 600 KB each decoded: 1.8 MB in all, over the 1.5 MB the watch keeps
+        names = {f"p{i}.png": (500, 400) for i in range(3)}
+        with self.assertRaisesRegex(BuildError, "decoded"):
+            s3face.check_files(self.files(**names), sorted(names))
+        names.popitem()
+        s3face.check_files(self.files(**names), sorted(names))
+
+
+class NewFace(unittest.TestCase):
+    """`s3w new --face`: a face from the template; the watch's parser accepts it."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="s3w_newface_"))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_creates_the_template_with_id_and_name(self):
+        d = self.tmp / "my_face"
+        self.assertEqual(cli.main(["new", str(d), "--face"]), 0)
+        face = json.loads((d / "face.json").read_text())
+        self.assertEqual((face["id"], face["name"]), ("dev.example.my_face", "My Face"))
+        self.assertEqual(sorted(p.name for p in d.iterdir()), ["face.json"])
+        d2 = self.tmp / "other"
+        self.assertEqual(cli.main(["new", str(d2), "--face", "--id", "dev.me.neon", "--name", "Neon"]), 0)
+        self.assertEqual(json.loads((d2 / "face.json").read_text())["id"], "dev.me.neon")
+
+    def test_refuses_what_the_watch_would(self):
+        self.assertEqual(cli.main(["new", str(self.tmp / "a"), "--face", "--id", "digital"]), 1)
+        self.assertEqual(cli.main(["new", str(self.tmp / "b"), "--face", "--id", "s3w.mine"]), 1)
+        self.assertEqual(cli.main(["new", str(self.tmp / "c"), "--face", "--id", "Bad Id"]), 1)
+        (self.tmp / "full").mkdir()
+        (self.tmp / "full" / "x").write_text("x")
+        self.assertEqual(cli.main(["new", str(self.tmp / "full"), "--face"]), 1)
+
+    def test_the_template_builds_and_runs_in_the_simulator(self):
+        sim = sim_path()
+        if not sim:
+            self.skipTest("no simulator (build/sim/s3w_sim or S3W_SIM)")
+        os.environ["S3W_SIM"] = sim
+        d = self.tmp / "tpl"
+        self.assertEqual(cli.main(["new", str(d), "--face"]), 0)
+        self.assertEqual(cli.main(["face", "build", str(d), "--unsigned"]), 0)
+        shot = self.tmp / "shot.png"
+        self.assertEqual(cli.main(["face", "run-sim", str(d), "--screenshot", str(shot)]), 0)
+        self.assertGreater(len(shot.read_bytes()), 2000)
+        # headless with a script: demo states and checks work through the CLI
+        script = self.tmp / "s.txt"
+        script.write_text("wait 200\ndemo low-battery on\ndemo no-phone on\nwait 100\n")
+        self.assertEqual(cli.main(["face", "run-sim", str(d), "--script", str(script), "--screenshot", str(shot)]), 0)
+
+    def test_run_sim_says_what_is_wrong(self):
+        self.assertEqual(cli.main(["face", "run-sim", str(self.tmp)]), 1)  # no face.json
+        sim = sim_path()
+        if sim:
+            os.environ["S3W_SIM"] = sim
+            (self.tmp / "face.json").write_text('{"id": "dev.x.y"}')
+            self.assertEqual(cli.main(["face", "run-sim", str(self.tmp), "--screenshot", str(self.tmp / "o.png")]), 1)
 
 
 if __name__ == "__main__":

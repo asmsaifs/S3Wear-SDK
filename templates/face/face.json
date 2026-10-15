@@ -1,0 +1,23 @@
+{
+  "id": "{{id}}",
+  "name": "{{name}}",
+  "version": "0.1.0",
+  "api": 1,
+  "author": "",
+  "description": "A vector face: time, date, a battery ring and a complication.",
+  "background": "#000000",
+  "elements": [
+    {"type": "arc", "bind": "battery.ratio", "x": 205, "y": 251, "r": 190, "w": 10,
+     "start": 135, "end": 405, "color": "accent", "track": "#2C2C2E"},
+    {"type": "text", "bind": "date.EEE d MMM", "x": 205, "y": 130, "font": "body_26", "color": "#9A9AA0", "upper": true},
+    {"type": "text", "bind": "time.hh:mm", "x": 205, "y": 230, "font": "digits_96", "color": "#FFFFFF"},
+    {"type": "text", "bind": "steps.count", "x": 205, "y": 315, "font": "title_32", "color": "accent"},
+    {"type": "text", "text": "steps", "x": 205, "y": 350, "font": "caption_22", "color": "#9A9AA0"},
+    {"type": "complication", "slot": "bottom", "x": 205, "y": 415, "style": "circle", "default": "weather"}
+  ],
+  "aod": {
+    "elements": [
+      {"type": "text", "bind": "time.hh:mm", "x": 205, "y": 251, "font": "digits_96_light", "color": "#6E6E73"}
+    ]
+  }
+}

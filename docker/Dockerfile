@@ -34,7 +34,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # gcc + libc: cargo links build scripts for the host even when the target is wasm.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates curl clang lld gcc libc6-dev make git zip unzip \
+ && apt-get install -y --no-install-recommends ca-certificates curl clang lld gcc libc6-dev make git zip unzip dnsutils \
         python3 python3-venv python3-pip \
  && rm -rf /var/lib/apt/lists/* \
  && clang --version | head -1 \

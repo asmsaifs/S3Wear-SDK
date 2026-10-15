@@ -17,9 +17,11 @@ import re
 import struct
 import subprocess
 import zipfile
+import zlib
 from pathlib import Path
 
 from . import s3app, sim
+from . import sim as sim_mod  # run_sim() has a parameter of that name
 from .project import BuildError
 
 PKG_MAX = 1024 * 1024
@@ -30,7 +32,14 @@ PREVIEW_SIZE = (200, 246)
 BUILTIN_IDS = {"digital", "analog", "modular", "minimal"}
 ID_RE = re.compile(r"^[a-z0-9_-][a-z0-9._-]{0,46}$")
 VERSION_RE = re.compile(r"^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$")
+# Files a face folder in the store repository holds that are not part of the package.
+STORE_FILES = {"listing.json", "README", "README.md", "LICENSE", "LICENSE.md", "LICENSE.txt", "NOTICE", "CHANGELOG.md"}
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+IMAGE_SIDE_MAX = 1024
+IMAGE_PIXELS_MAX = 512 * 1024      # one picture, decoded (the watch's loader refuses more)
+IMAGE_CACHE_BYTES = 1536 * 1024    # all the face's pictures decoded, 3 bytes a pixel: what the watch keeps at once
+CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
+DEPTHS = {0: (1, 2, 4, 8, 16), 2: (8, 16), 3: (1, 2, 4, 8), 4: (8, 16), 6: (8, 16)}
 CHECK_TIMEOUT_S = 30
 
 
@@ -52,6 +61,45 @@ def png_size(data):
     if len(data) < 33 or data[:8] != PNG_MAGIC or data[8:16] != b"\0\0\0\x0dIHDR":
         return None
     return struct.unpack(">II", data[16:24])
+
+
+def png_check(name, data):
+    """What the watch's decoder needs of a picture: valid chunks (CRCs), a colour type and depth PNG allows, image
+    data that inflates to the right size. Returns (width, height). BuildError with the reason."""
+    size = png_size(data)
+    if size is None:
+        raise BuildError(f"{name} is not a PNG")
+    pos, idat, ihdr = 8, b"", None
+    while pos < len(data):
+        if pos + 12 > len(data):
+            raise BuildError(f"{name}: truncated")
+        ln = struct.unpack(">I", data[pos:pos + 4])[0]
+        tag, body = data[pos + 4:pos + 8], data[pos + 8:pos + 8 + ln]
+        if len(body) != ln or pos + 12 + ln > len(data):
+            raise BuildError(f"{name}: truncated")
+        if zlib.crc32(tag + body) & 0xFFFFFFFF != struct.unpack(">I", data[pos + 8 + ln:pos + 12 + ln])[0]:
+            raise BuildError(f"{name}: damaged ({tag.decode('ascii', 'replace')} chunk CRC)")
+        if tag == b"IHDR":
+            ihdr = struct.unpack(">IIBBBBB", body)
+        elif tag == b"IDAT":
+            idat += body
+        elif tag == b"IEND":
+            break
+        pos += 12 + ln
+    if ihdr is None or not idat:
+        raise BuildError(f"{name}: no image data")
+    w, h, depth, ctype, _, _, interlace = ihdr
+    if ctype not in CHANNELS or depth not in DEPTHS[ctype]:
+        raise BuildError(f"{name}: colour type {ctype} with {depth} bits is not a PNG")
+    try:
+        raw = zlib.decompress(idat)
+    except zlib.error as e:
+        raise BuildError(f"{name}: damaged image data ({e})")
+    if not interlace:
+        stride = (w * CHANNELS[ctype] * depth + 7) // 8
+        if len(raw) != h * (1 + stride):
+            raise BuildError(f"{name}: image data is the wrong size")
+    return w, h
 
 
 def digest(files):
@@ -102,8 +150,15 @@ def check_files(files, images):
             raise BuildError(f"{name} is not a PNG")
         if name == PREVIEW and size != PREVIEW_SIZE:
             raise BuildError(f"{PREVIEW} is {size[0]}x{size[1]}, not {PREVIEW_SIZE[0]}x{PREVIEW_SIZE[1]}")
-        if name != PREVIEW and not (0 < size[0] <= 1024 and 0 < size[1] <= 1024):
+        if name != PREVIEW and not (0 < size[0] <= IMAGE_SIDE_MAX and 0 < size[1] <= IMAGE_SIDE_MAX):
             raise BuildError(f"{name}: size {size[0]}x{size[1]} not supported")
+        if name != PREVIEW:
+            w, h = png_check(name, data)
+            if w * h > IMAGE_PIXELS_MAX:
+                raise BuildError(f"{name}: {w}x{h} is over {IMAGE_PIXELS_MAX} pixels (the watch keeps 1.5 MB of pictures)")
+    cache = sum(w * h * 3 for w, h in (png_size(files[n]) for n in set(images)))
+    if cache > IMAGE_CACHE_BYTES:
+        raise BuildError(f"the pictures need {cache // 1024} KB decoded; the watch keeps {IMAGE_CACHE_BYTES // 1024} KB at once")
     if sum(len(d) for d in files.values()) > PKG_MAX:
         raise BuildError(f"package over {PKG_MAX // 1024} KB")
 
@@ -115,7 +170,7 @@ def read_dir(src):
         raise BuildError(f"{src}: no face.json")
     files = {}
     for p in sorted(src.iterdir()):
-        if p.name.startswith(".") or p.name == "build" or p.name == s3app.SIG_NAME:
+        if p.name.startswith(".") or p.name == "build" or p.name == s3app.SIG_NAME or p.name in STORE_FILES:
             continue
         if p.is_dir():
             raise BuildError(f"{p.name}/: a face is face.json and its images, no folders")
@@ -215,3 +270,28 @@ def verify(path, trusted=None):
     if trusted is not None and sig[:32] != trusted:
         raise SystemExit("signed by another key")
     return info, sig[:32]
+
+
+def run_sim(face_dir, sim=None, script=None, screenshot=None, watch=True):
+    """`s3w face run-sim`: the face in the simulator. A window reloads it whenever face.json or a picture is saved
+    (a face the watch's parser refuses keeps the last good one on screen) and has keys for demo data; with a script
+    or screenshot it runs headless once."""
+    d = Path(face_dir).resolve()
+    if not (d / "face.json").is_file():
+        raise BuildError(f"{d}: no face.json (start with `s3w new --face`)")
+    sim_path = sim_mod.find_sim(sim)
+    check_face_json(sim_path, d / "face.json")  # a face the watch refuses is said at once, with line and column
+    cmd = [sim_path, "--face", str(d)]
+    if script:
+        cmd += ["--script", script]
+    if screenshot:
+        cmd += ["--screenshot", screenshot]
+    if script or screenshot:
+        return subprocess.run(cmd).returncode
+    if watch:
+        cmd.append("--watch-face")
+    print(f"simulator running {d.name}; saving face.json or a picture reloads it (Ctrl-C ends)")
+    try:
+        return subprocess.run(cmd).returncode
+    except KeyboardInterrupt:
+        return 0

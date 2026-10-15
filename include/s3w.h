@@ -13,11 +13,14 @@
  * The same header is compiled into the firmware (for the types and constants); the import
  * declarations are only visible when compiling for wasm.
  *
- * Implemented: lifecycle, system, timers, widgets mode (P8-02), canvas mode (P8-03), input,
- * sensors, audio, storage, health, network and notifications (P8-04); packages (P8-05); game
- * services (P8-08); device files (P8-18, api_level 2).
+ * Implemented: lifecycle, system, timers, widgets mode, canvas mode, input, sensors, audio, storage,
+ * health, network, notifications, packages, game services, device files (api_level 2) and the
+ * Game Boy core (api_level 3).
  *
- * Permissions (docs/05 §4): functions marked [perm: x] need permission x in the app's manifest;
+ * Documentation tags (read by the API reference generator): every function carries `@since N` (the api_level that
+ * added it) and, if it needs a permission, `@perm x`.
+ *
+ * Permissions: functions tagged @perm x need permission x in the app's manifest;
  * calling one without it traps the app. (The firmware's built-in samples get theirs from the
  * firmware.)
  *
@@ -264,23 +267,30 @@ enum { S3W_SPRITE_FLIP_X = 1, S3W_SPRITE_FLIP_Y = 2 };
 #define S3W_EXPORT(name) __attribute__((export_name(#name)))
 
 /* --- Lifecycle: the app exports these (all optional) --------------------------------------- */
-/* s3w_on_start: build the UI, read saved state. 250 ms budget; a hang kills the app.
- * s3w_on_resume / s3w_on_pause: visible again / covered or screen off.
- * s3w_on_stop: the system ends the app (not after s3w_exit).
- * s3w_on_event: one event (see S3W_EV_*); e is valid only during the call.
- * Every callback except s3w_on_start must return within 50 ms (3 overruns kill the app). */
+/* Build the UI, read saved state. 250 ms budget; a hang kills the app at once.
+ * @since 1 */
 void s3w_on_start(void) S3W_EXPORT(s3w_on_start);
+/* The app is visible again. Must return within 250 ms (3 overruns kill the app).
+ * @since 1 */
 void s3w_on_resume(void) S3W_EXPORT(s3w_on_resume);
+/* The app is covered or the screen is off. Must return within 250 ms (3 overruns kill the app).
+ * @since 1 */
 void s3w_on_pause(void) S3W_EXPORT(s3w_on_pause);
+/* The system ends the app (not called after s3w_exit). Must return within 250 ms (3 overruns kill the app).
+ * @since 1 */
 void s3w_on_stop(void) S3W_EXPORT(s3w_on_stop);
+/* One event (see S3W_EV_*); e is valid only during the call. Must return within 250 ms (3 overruns kill the app).
+ * @since 1 */
 void s3w_on_event(const s3w_event_t *e) S3W_EXPORT(s3w_on_event);
 
 /* Canvas mode: called at the requested frame rate (s3w_gfx_set_fps) while the app is visible.
- * dt_ms is the time since the previous frame (0 for the first one after start or resume). */
+ * dt_ms is the time since the previous frame (0 for the first one after start or resume). Must return
+ * within 250 ms (3 overruns kill the app).
+ * @since 1 */
 void s3w_on_frame(uint32_t dt_ms) S3W_EXPORT(s3w_on_frame);
 
 /* Where the runtime writes the event it passes to s3w_on_event. Defined here (weak, so any
- * number of files may include this header); apps do not call it. */
+ * number of files may include this header); apps do not call it. @internal */
 __attribute__((weak, export_name("s3w_event_buf"))) s3w_event_t *s3w_event_buf(void)
 {
     static s3w_event_t ev;
@@ -288,65 +298,95 @@ __attribute__((weak, export_name("s3w_event_buf"))) s3w_event_t *s3w_event_buf(v
 }
 
 /* --- System ------------------------------------------------------------------------------- */
-/* Milliseconds since the app started (monotonic). */
+/* Milliseconds since the app started (monotonic).
+ * @since 1 */
 uint32_t s3w_millis(void) S3W_IMPORT(s3w_millis);
-/* Seconds since 1970 (UTC), or 0 while the watch does not know the time. */
+/* Seconds since 1970 (UTC), or 0 while the watch does not know the time.
+ * @since 1 */
 int64_t s3w_time_unix(void) S3W_IMPORT(s3w_time_unix);
-/* Local time in the watch's time zone. S3W_ERR_NOT_READY while the time is unknown. */
+/* Local time in the watch's time zone. S3W_ERR_NOT_READY while the time is unknown.
+ * @since 1 */
 int s3w_time_local(s3w_tm_t *out) S3W_IMPORT(s3w_time_local);
+/* Writes msg (UTF-8, len bytes) to the app log at a level S3W_LOG_*; `s3w logs` shows it.
+ * @since 1 */
 void s3w_log(int level, const char *msg, int len) S3W_IMPORT(s3w_log);
-/* Ends the app at once (s3w_on_stop is not called). */
+/* Ends the app at once (s3w_on_stop is not called).
+ * @since 1 */
 void s3w_exit(void) S3W_IMPORT(s3w_exit);
 /* Starts a timer (at least 20 ms, up to 8 at once): S3W_EV_TIMER with its id after each period.
- * Returns the id (> 0) or S3W_ERR_*. */
+ * Returns the id (> 0) or S3W_ERR_*.
+ * @since 1 */
 int s3w_timer_start(uint32_t period_ms, bool repeat) S3W_IMPORT(s3w_timer_start);
-/* Stops a timer. An id that is not running (a one-shot that fired) is ignored. */
+/* Stops a timer. An id that is not running (a one-shot that fired) is ignored.
+ * @since 1 */
 void s3w_timer_stop(int id) S3W_IMPORT(s3w_timer_stop);
 /* Holds the screen on while the app is in the foreground (released when it ends).
- * [perm: keep_screen_on] */
+ * @since 1  @perm keep_screen_on */
 void s3w_keep_screen_on(bool on) S3W_IMPORT(s3w_keep_screen_on);
 /* The UI language as a BCP 47 tag ("en", "de", "bn"), like snprintf: writes at most cap bytes
- * including a terminating NUL and returns the tag's length. */
+ * including a terminating NUL and returns the tag's length.
+ * @since 1 */
 int s3w_locale(char *buf, int cap) S3W_IMPORT(s3w_locale);
 
 /* --- Widgets mode ------------------------------------------------------------------------- */
-/* The app's full-screen root container (black, no padding, scrolls vertically if needed). */
+/* The app's full-screen root container (black, no padding, scrolls vertically if needed).
+ * @since 1 */
 int s3w_ui_screen(void) S3W_IMPORT(s3w_ui_screen);
+/* A text label inside parent (a container handle). Returns its handle.
+ * @since 1 */
 int s3w_ui_label(int parent, const char *text, int len) S3W_IMPORT(s3w_ui_label);
-/* Pill button: S3W_EV_CLICK. */
+/* Pill button: S3W_EV_CLICK.
+ * @since 1 */
 int s3w_ui_button(int parent, const char *text, int len) S3W_IMPORT(s3w_ui_button);
-/* Full-size vertical list inset from the round corners. */
+/* Full-size vertical list inset from the round corners.
+ * @since 1 */
 int s3w_ui_list(int parent) S3W_IMPORT(s3w_ui_list);
-/* A tappable row (S3W_EV_CLICK with the row's handle); icon is S3W_ICON_*. */
+/* A tappable row (S3W_EV_CLICK with the row's handle); icon is S3W_ICON_*.
+ * @since 1 */
 int s3w_ui_list_add(int list, int icon, const char *text, int len) S3W_IMPORT(s3w_ui_list_add);
-/* An image from the app's assets. S3W_ERR_NOT_FOUND for now: packages carry assets/ (P8-05), loading them is not done yet. */
+/* An image from the app's assets. S3W_ERR_NOT_FOUND for now: packages carry assets/, but loading them is not done yet.
+ * @since 1 */
 int s3w_ui_image(int parent, const char *asset_path, int len) S3W_IMPORT(s3w_ui_image);
 /* A picture from the device's files (path as in s3w_fs_list): PNG, baseline JPEG or BMP (24 / 32 bit), reduced
  * to fit max_w x max_h px (1..S3W_FILE_IMAGE_MAX_SIDE; aspect kept, never enlarged). The watch decodes it
  * before returning, off the UI task: a PNG or BMP of up to S3W_FILE_IMAGE_MAX_PIXELS, a JPEG of up to
  * S3W_FILE_JPEG_MAX_PIXELS, a file of up to 3 MB, shrunk by at most 16 times; more is S3W_ERR_NO_RESOURCE.
  * S3W_ERR_NOT_FOUND (no such file), S3W_ERR_INVALID (path, size, progressive JPEG, damaged or another format),
- * S3W_ERR_DENIED (not a user place). Returns the widget. api_level 2. [perm: files] */
+ * S3W_ERR_DENIED (not a user place). Returns the widget.
+ * @since 2  @perm files */
 int s3w_ui_image_file(int parent, const char *path, int len, int max_w, int max_h) S3W_IMPORT(s3w_ui_image_file);
-/* Progress ring (display only). */
+/* Progress ring (display only).
+ * @since 1 */
 int s3w_ui_arc(int parent, int min, int max, int value) S3W_IMPORT(s3w_ui_arc);
-/* S3W_EV_VALUE while dragged. */
+/* S3W_EV_VALUE while dragged.
+ * @since 1 */
 int s3w_ui_slider(int parent, int min, int max, int value) S3W_IMPORT(s3w_ui_slider);
-/* S3W_EV_VALUE (0/1) when toggled. */
+/* S3W_EV_VALUE (0/1) when toggled.
+ * @since 1 */
 int s3w_ui_switch(int parent, bool on) S3W_IMPORT(s3w_ui_switch);
-/* Label or button text. */
+/* Label or button text.
+ * @since 1 */
 void s3w_ui_set_text(int h, const char *text, int len) S3W_IMPORT(s3w_ui_set_text);
-/* Arc, slider (clamped to their range) or switch (0/1). */
+/* Arc, slider (clamped to their range) or switch (0/1).
+ * @since 1 */
 void s3w_ui_set_value(int h, int v) S3W_IMPORT(s3w_ui_set_value);
+/* Moves a widget to (x, y) px relative to its parent (an offset from its S3W_STYLE_ALIGN placement).
+ * @since 1 */
 void s3w_ui_set_pos(int h, int x, int y) S3W_IMPORT(s3w_ui_set_pos);
-/* Buttons are at least 160 px wide until their size is set. */
+/* Buttons are at least 160 px wide until their size is set.
+ * @since 1 */
 void s3w_ui_set_size(int h, int w, int hgt) S3W_IMPORT(s3w_ui_set_size);
-/* prop is S3W_STYLE_*; an unknown prop or bad value returns quietly (nothing changes). */
+/* prop is S3W_STYLE_*; an unknown prop or bad value returns quietly (nothing changes).
+ * @since 1 */
 void s3w_ui_set_style(int h, int prop, int value) S3W_IMPORT(s3w_ui_set_style);
-/* Deletes the widget and its children (their handles die too). Not the screen. */
+/* Deletes the widget and its children (their handles die too). Not the screen.
+ * @since 1 */
 void s3w_ui_delete(int h) S3W_IMPORT(s3w_ui_delete);
+/* Shows a short message over the app for a moment.
+ * @since 1 */
 void s3w_ui_toast(const char *text, int len) S3W_IMPORT(s3w_ui_toast);
-/* Confirm dialog over the app: S3W_EV_DIALOG with the returned id. One at a time. */
+/* Confirm dialog over the app: S3W_EV_DIALOG with the returned id. One at a time.
+ * @since 1 */
 int s3w_ui_dialog(const char *title, int tl, const char *body, int bl, const char *ok, int ol)
     S3W_IMPORT(s3w_ui_dialog);
 
@@ -356,78 +396,116 @@ int s3w_ui_dialog(const char *title, int tl, const char *body, int bl, const cha
  * rectangles), so small changes are cheap. Coordinates are px from the top left; everything is
  * clipped to the canvas. The canvas starts black. */
 
-/* Frames per second for s3w_on_frame, clamped to 1..S3W_GFX_FPS_MAX (default 30). */
+/* Frames per second for s3w_on_frame, clamped to 1..S3W_GFX_FPS_MAX (default 30).
+ * @since 1 */
 void s3w_gfx_set_fps(int fps) S3W_IMPORT(s3w_gfx_set_fps);
+/* Fills the whole canvas with color (RGB565, see S3W_RGB565).
+ * @since 1 */
 void s3w_gfx_clear(uint16_t color) S3W_IMPORT(s3w_gfx_clear);
-/* Filled, or a 1 px outline. */
+/* Filled, or a 1 px outline.
+ * @since 1 */
 void s3w_gfx_rect(int x, int y, int w, int h, uint16_t color, bool fill) S3W_IMPORT(s3w_gfx_rect);
+/* A circle of radius r around (cx, cy): filled, or a 1 px outline.
+ * @since 1 */
 void s3w_gfx_circle(int cx, int cy, int r, uint16_t color, bool fill) S3W_IMPORT(s3w_gfx_circle);
-/* width 1..16 px. */
+/* width 1..16 px.
+ * @since 1 */
 void s3w_gfx_line(int x0, int y0, int x1, int y1, uint16_t color, int width) S3W_IMPORT(s3w_gfx_line);
 /* (x, y) is the top left of the first line; '\n' starts a new line. font is S3W_FONT_*. At most
- * 255 bytes of UTF-8. */
+ * 255 bytes of UTF-8.
+ * @since 1 */
 void s3w_gfx_text(int x, int y, const char *t, int len, int font, uint16_t color) S3W_IMPORT(s3w_gfx_text);
-/* Width in px of one line of text in that font (for centring). */
+/* Width in px of one line of text in that font (for centring).
+ * @since 1 */
 int s3w_gfx_text_width(const char *t, int len, int font) S3W_IMPORT(s3w_gfx_text_width);
 /* A sprite from RGB565 pixels in app memory (copied: the app may reuse its buffer). frames
  * frames of w x h px are stacked top to bottom (pixels holds w * h * frames values). key is the
  * transparent colour, or S3W_SPRITE_NO_KEY. Returns the sprite id (> 0) or S3W_ERR_INVALID (bad
- * size) / S3W_ERR_NO_RESOURCE (S3W_SPRITE_MAX or S3W_SPRITE_MAX_BYTES reached). */
+ * size) / S3W_ERR_NO_RESOURCE (S3W_SPRITE_MAX or S3W_SPRITE_MAX_BYTES reached).
+ * @since 1 */
 int s3w_gfx_sprite_create(const uint16_t *pixels, int w, int h, int frames, int key)
     S3W_IMPORT(s3w_gfx_sprite_create);
-/* A sprite from the app's assets. S3W_ERR_NOT_FOUND for now: packages carry assets/ (P8-05), loading them is not done yet. */
+/* A sprite from the app's assets. S3W_ERR_NOT_FOUND for now: packages carry assets/, but loading them is not done yet.
+ * @since 1 */
 int s3w_gfx_sprite_load(const char *asset, int len) S3W_IMPORT(s3w_gfx_sprite_load);
 /* Draws frame (0-based) of sprite id with its top left at (x, y); flags S3W_SPRITE_FLIP_*.
- * An unknown id or a frame out of range traps. */
+ * An unknown id or a frame out of range traps.
+ * @since 1 */
 void s3w_gfx_sprite(int id, int x, int y, int frame, int flags) S3W_IMPORT(s3w_gfx_sprite);
-/* Copies w x h RGB565 pixels (row by row) from app memory. */
+/* Copies w x h RGB565 pixels (row by row) from app memory.
+ * @since 1 */
 void s3w_gfx_blit(const uint16_t *pixels, int x, int y, int w, int h) S3W_IMPORT(s3w_gfx_blit);
 /* Ends the frame: what was drawn since the last present goes to the display once the current
- * callback returns. */
+ * callback returns.
+ * @since 1 */
 void s3w_gfx_present(void) S3W_IMPORT(s3w_gfx_present);
 
 /* --- Sensors [perm: imu] ----------------------------------------------------------------- */
 /* Streams the accelerometer as S3W_EV_IMU events at about rate_hz (1..100 asked; the sensor runs
- * at 62.5 Hz) while the app is visible. Returns the rate used. No gyroscope data yet. */
+ * at 62.5 Hz) while the app is visible. Returns the rate used. No gyroscope data yet.
+ * @since 1  @perm imu */
 int s3w_imu_start(int rate_hz) S3W_IMPORT(s3w_imu_start);
+/* Stops the accelerometer stream.
+ * @since 1  @perm imu */
 void s3w_imu_stop(void) S3W_IMPORT(s3w_imu_stop);
 /* Pitch and roll in degrees from the latest sample (0, 0 lying face up; pitch > 0: 12 o'clock
  * raised, roll > 0: 3 o'clock raised). Starts the accelerometer if no stream runs (no events
- * then): S3W_ERR_NOT_READY until it has a sample. */
+ * then): S3W_ERR_NOT_READY until it has a sample.
+ * @since 1  @perm imu */
 int s3w_tilt(float *pitch, float *roll) S3W_IMPORT(s3w_tilt);
 
 /* --- Audio ------------------------------------------------------------------------------- */
-/* volume 0..100 of the watch's media volume; Silent mutes. [perm: audio.play] */
-/* A tone, freq_hz 20..8000 for ms 1..10000 (replaces the app's tone if one plays). */
+/* volume is 0..100 of the watch's media volume in every audio function; Silent mutes. */
+/* A tone, freq_hz 20..8000 for ms 1..10000 (replaces the app's tone if one plays).
+ * @since 1  @perm audio.play */
 int s3w_audio_tone(int freq_hz, int ms, int volume) S3W_IMPORT(s3w_audio_tone);
-/* A WAV from the app's assets. S3W_ERR_NOT_FOUND for now: packages carry assets/ (P8-05), loading them is not done yet. */
+/* A WAV from the app's assets. S3W_ERR_NOT_FOUND for now: packages carry assets/, but loading them is not done yet.
+ * @since 1  @perm audio.play */
 int s3w_audio_play(const char *asset, int len, int volume) S3W_IMPORT(s3w_audio_play);
 /* 16-bit mono PCM; sample_rate 16000 only (else S3W_ERR_UNSUPPORTED). One stream: returns its
- * handle. The volume is the media volume. */
+ * handle. The volume is the media volume.
+ * @since 1  @perm audio.play */
 int s3w_audio_stream_open(int sample_rate) S3W_IMPORT(s3w_audio_stream_open);
-/* Queues samples without waiting (the buffer holds 1 s); returns how many were taken. */
+/* Queues samples without waiting (the buffer holds 1 s); returns how many were taken.
+ * @since 1  @perm audio.play */
 int s3w_audio_stream_write(int h, const int16_t *pcm, int samples) S3W_IMPORT(s3w_audio_stream_write);
-/* Stops a stream (its handle), or with 0 the app's tone and stream. */
+/* Stops a stream (its handle), or with 0 the app's tone and stream.
+ * @since 1  @perm audio.play */
 void s3w_audio_stop(int h) S3W_IMPORT(s3w_audio_stop);
-/* Microphone [perm: audio.record]: S3W_ERR_UNSUPPORTED until voice support (P7). */
+/* Starts the microphone. S3W_ERR_UNSUPPORTED until the watch has voice support.
+ * @since 1  @perm audio.record */
 int s3w_mic_start(int sample_rate) S3W_IMPORT(s3w_mic_start);
+/* Stops the microphone.
+ * @since 1  @perm audio.record */
 void s3w_mic_stop(void) S3W_IMPORT(s3w_mic_stop);
 
 /* --- Storage ----------------------------------------------------------------------------- */
 /* The app's own files: S3W_STORAGE_DEFAULT_KB in all, or the manifest's quota with the "storage"
  * permission (no permission needed). Keys and file names: 1..S3W_NAME_MAX bytes of
  * [A-Za-z0-9._-], not starting with '.' (S3W_ERR_INVALID otherwise). */
-/* The value's length (copies at most cap bytes), or S3W_ERR_NOT_FOUND. */
+/* The value's length (copies at most cap bytes), or S3W_ERR_NOT_FOUND.
+ * @since 1 */
 int s3w_kv_get(const char *k, int kl, void *buf, int cap) S3W_IMPORT(s3w_kv_get);
-/* vl ≤ S3W_KV_VALUE_MAX. S3W_ERR_NO_SPACE over the quota. */
+/* vl ≤ S3W_KV_VALUE_MAX. S3W_ERR_NO_SPACE over the quota.
+ * @since 1 */
 int s3w_kv_set(const char *k, int kl, const void *v, int vl) S3W_IMPORT(s3w_kv_set);
+/* Deletes a key. S3W_OK, or a negative S3W_ERR_* (S3W_ERR_INVALID for a bad key).
+ * @since 1 */
 int s3w_kv_delete(const char *k, int kl) S3W_IMPORT(s3w_kv_delete);
-/* mode S3W_FILE_*: returns fd (≥ 1), S3W_ERR_NOT_FOUND (read), S3W_ERR_NO_RESOURCE (4 open). */
+/* mode S3W_FILE_*: returns fd (≥ 1), S3W_ERR_NOT_FOUND (read), S3W_ERR_NO_RESOURCE (4 open).
+ * @since 1 */
 int s3w_file_open(const char *name, int len, int mode) S3W_IMPORT(s3w_file_open);
-/* Bytes read (0 at the end) or written (S3W_ERR_NO_SPACE over the quota). */
+/* Bytes read (0 at the end) or written (S3W_ERR_NO_SPACE over the quota).
+ * @since 1 */
 int s3w_file_read(int fd, void *buf, int n) S3W_IMPORT(s3w_file_read);
+/* Writes n bytes to a file opened with S3W_FILE_WRITE or S3W_FILE_APPEND. Returns the bytes written, or S3W_ERR_NO_SPACE over the quota.
+ * @since 1 */
 int s3w_file_write(int fd, const void *buf, int n) S3W_IMPORT(s3w_file_write);
+/* Closes a file.
+ * @since 1 */
 void s3w_file_close(int fd) S3W_IMPORT(s3w_file_close);
+/* Deletes one of the app's files. S3W_OK, or a negative S3W_ERR_* (S3W_ERR_NOT_FOUND if there is none).
+ * @since 1 */
 int s3w_file_delete(const char *name, int len) S3W_IMPORT(s3w_file_delete);
 
 /* --- Device files [perm: files] (api_level 2) --------------------------------------------- */
@@ -441,44 +519,55 @@ int s3w_file_delete(const char *name, int len) S3W_IMPORT(s3w_file_delete);
  * entries whose name sorts after `after` (al = 0: from the first), at most max of them. Paging: pass the last
  * name of a page to get the next, so the pages stay right while files come and go. Returns how many were
  * written (0 = past the end), S3W_ERR_NOT_FOUND (no such directory, or no card), S3W_ERR_DENIED,
- * S3W_ERR_INVALID (path, `after` longer than S3W_FS_NAME_MAX, max 1..32). */
+ * S3W_ERR_INVALID (path, `after` longer than S3W_FS_NAME_MAX, max 1..32).
+ * @since 2  @perm files */
 int s3w_fs_list(const char *dir, int dl, const char *after, int al, s3w_fs_entry_t *out, int max)
     S3W_IMPORT(s3w_fs_list);
 /* Deletes a file or an empty directory (one that holds only hidden files, which are not listed, counts as
  * empty and they go with it). S3W_ERR_NOT_FOUND, S3W_ERR_DENIED (not a user place, a root, or a directory with
- * anything else in it), S3W_ERR_IO. */
+ * anything else in it), S3W_ERR_IO.
+ * @since 2  @perm files */
 int s3w_fs_delete(const char *path, int len) S3W_IMPORT(s3w_fs_delete);
 /* Opens a file for reading; one at a time (S3W_ERR_NO_RESOURCE while another is open). Returns the file's
  * size in bytes (a file over 2 GB: S3W_ERR_INVALID) or S3W_ERR_NOT_FOUND / S3W_ERR_DENIED. Closed with the
- * app. */
+ * app.
+ * @since 2  @perm files */
 int s3w_fs_open(const char *path, int len) S3W_IMPORT(s3w_fs_open);
-/* Bytes read from the open file (0 at the end), up to n (≤ 4096 per call). S3W_ERR_NOT_READY: none is open. */
+/* Bytes read from the open file (0 at the end), up to n (≤ 4096 per call). S3W_ERR_NOT_READY: none is open.
+ * @since 2  @perm files */
 int s3w_fs_read(void *buf, int n) S3W_IMPORT(s3w_fs_read);
+/* Closes the file opened by s3w_fs_open (also done when the app ends).
+ * @since 2  @perm files */
 void s3w_fs_close(void) S3W_IMPORT(s3w_fs_close);
 
 /* --- Game Boy core [perm: gameboy] (api_level 3, Pro edition) ------------------------------- */
-/* A native emulator for DMG cartridge files on the card (docs/12). The app passes the file's path, the
+/* A native emulator for DMG cartridge files on the card. The app passes the file's path, the
  * buttons and where to draw; the picture is drawn into the canvas by the firmware (canvas apps only).
  * ROMs must be on the card ("/sd/..."), anywhere else is S3W_ERR_DENIED. The cartridge RAM is kept next to
  * the ROM as "<name>.sav" (portable to PC emulators). One game at a time. */
 /* Lists a folder of the card for the game library: like s3w_fs_list (name order, paging by the last name,
  * at most 32 entries per call), but only folders and cartridge files (.gb, .gbc, any case); anything else
  * is left out. The permission "gameboy" is enough: the app cannot see, read or delete other files.
- * S3W_ERR_DENIED outside "/sd", S3W_ERR_NOT_FOUND (no such folder, or no card). */
+ * S3W_ERR_DENIED outside "/sd", S3W_ERR_NOT_FOUND (no such folder, or no card).
+ * @since 3  @perm gameboy */
 int s3w_gb_list(const char *dir, int dl, const char *after, int al, s3w_fs_entry_t *out, int max)
     S3W_IMPORT(s3w_gb_list);
 /* Reads the header of a cartridge file into `out`. S3W_OK; S3W_ERR_INVALID: damaged header, truncated file
  * (`out` is still filled when the header could be read); S3W_ERR_NOT_FOUND, S3W_ERR_DENIED (not on the
- * card), S3W_ERR_IO. Check `out->supported` before loading. */
+ * card), S3W_ERR_IO. Check `out->supported` before loading.
+ * @since 3  @perm gameboy */
 int s3w_gb_probe(const char *path, int len, s3w_gb_info_t *out) S3W_IMPORT(s3w_gb_probe);
 /* Opens the cartridge and its save file and resets the console. S3W_ERR_UNSUPPORTED (mapper, colour-only
  * game), S3W_ERR_INVALID (damaged header, or a save of the wrong size, which is never overwritten),
- * S3W_ERR_NO_RESOURCE (a game is already loaded, or out of memory), S3W_ERR_IO. */
+ * S3W_ERR_NO_RESOURCE (a game is already loaded, or out of memory), S3W_ERR_IO.
+ * @since 3  @perm gameboy */
 int s3w_gb_load(const char *path, int len) S3W_IMPORT(s3w_gb_load);
 /* Writes the cartridge RAM if it changed and closes the game (also done when the app ends).
- * S3W_ERR_NOT_READY: nothing loaded; S3W_ERR_IO: the save could not be written. */
+ * S3W_ERR_NOT_READY: nothing loaded; S3W_ERR_IO: the save could not be written.
+ * @since 3  @perm gameboy */
 int s3w_gb_unload(void) S3W_IMPORT(s3w_gb_unload);
-/* The buttons held now (S3W_GB_* or-ed together); stays until the next call. */
+/* The buttons held now (S3W_GB_* or-ed together); stays until the next call.
+ * @since 3  @perm gameboy */
 void s3w_gb_input(uint32_t buttons) S3W_IMPORT(s3w_gb_input);
 /* Runs the console for one video frame (1/59.7 s) and draws it with its top left at (x, y) of the canvas at
  * scale S3W_GB_SCALE_*: 160x144, 320x288 or 400x360 px. The whole picture must lie inside the canvas
@@ -489,18 +578,24 @@ void s3w_gb_input(uint32_t buttons) S3W_IMPORT(s3w_gb_input);
  * missed frames this way and draw only the last, so the game keeps its speed (the app paces: dt_ms of
  * s3w_on_frame / 16.74 ms per frame). Returns the milliseconds it took, S3W_ERR_NOT_READY (nothing loaded, or
  * drawing without a canvas), S3W_ERR_IO (the card failed mid-game: stop), S3W_ERR_UNSUPPORTED (the game did
- * something the core cannot do). */
+ * something the core cannot do).
+ * @since 3  @perm gameboy */
 int s3w_gb_run_frame(int x, int y, int scale, uint32_t flags) S3W_IMPORT(s3w_gb_run_frame);
-/* Writes the cartridge RAM now if it changed. */
+/* Writes the cartridge RAM now if it changed.
+ * @since 3  @perm gameboy */
 int s3w_gb_flush_ram(void) S3W_IMPORT(s3w_gb_flush_ram);
-/* The four shades from lightest to darkest, RGB565 (default: white to black). */
+/* The four shades from lightest to darkest, RGB565 (default: white to black).
+ * @since 3  @perm gameboy */
 int s3w_gb_set_palette(const uint16_t *pal) S3W_IMPORT(s3w_gb_set_palette);
 /* Save states: the whole console in "<game>.st<slot>" next to the ROM (slot 0..3; the card, not the flash).
  * s3w_gb_save_state writes it atomically; s3w_gb_load_state puts the console back (the next frame is drawn in
  * full). Errors: S3W_ERR_NOT_READY (nothing loaded), S3W_ERR_INVALID (slot, or a file that is not a state of this
  * game and this firmware's core, or damaged: the console is left as it was), S3W_ERR_NOT_FOUND (load: no such
- * state), S3W_ERR_IO. A state does not survive a firmware update that changes the core. */
+ * state), S3W_ERR_IO. A state does not survive a firmware update that changes the core.
+ * @since 3  @perm gameboy */
 int s3w_gb_save_state(int slot) S3W_IMPORT(s3w_gb_save_state);
+/* Puts the console back to the state saved in slot by s3w_gb_save_state; errors as there.
+ * @since 3  @perm gameboy */
 int s3w_gb_load_state(int slot) S3W_IMPORT(s3w_gb_load_state);
 /* The console's sound: on = true opens the 16 kHz PCM stream (the one s3w_audio_stream_open uses: one at a time,
  * S3W_ERR_NO_RESOURCE while the app has its own open) and from then on every frame run by s3w_gb_run_frame, drawn
@@ -508,11 +603,13 @@ int s3w_gb_load_state(int slot) S3W_IMPORT(s3w_gb_load_state);
  * the volume. Needs "audio.play" as well as "gameboy". Sound that is more than about 150 ms ahead of the speaker
  * is dropped, so the picture can fall behind without the sound lagging. Muted by the watch's Silent mode like any
  * stream. S3W_ERR_UNSUPPORTED: no audio on this watch. The sound registers follow the game whether or not sound is
- * on, and switching it on mid-game plays what is playing. [perm: gameboy, audio.play] */
+ * on, and switching it on mid-game plays what is playing.
+ * @since 3  @perm gameboy, audio.play */
 int s3w_gb_set_audio(bool on, int volume) S3W_IMPORT(s3w_gb_set_audio);
 
 /* --- Health [perm: health.read] ---------------------------------------------------------- */
-/* S3W_ERR_UNSUPPORTED until activity tracking exists (P5). */
+/* Today's totals. S3W_ERR_UNSUPPORTED until the watch has activity tracking.
+ * @since 1  @perm health.read */
 int s3w_health_today(s3w_health_summary_t *out) S3W_IMPORT(s3w_health_today);
 
 /* --- Network [perm: phone.http or wifi.http] --------------------------------------------- */
@@ -527,22 +624,27 @@ typedef struct {
     void *resp;               /* the response body goes here: keep it until S3W_EV_HTTP */
     int32_t resp_cap;         /* 0..S3W_HTTP_RESP_MAX */
 } s3w_http_req_t;             /* 36 bytes */
-/* Through the phone (Wi-Fi comes with P9). Returns the request id (S3W_EV_HTTP follows),
- * S3W_ERR_NOT_READY (no phone), S3W_ERR_NO_RESOURCE (S3W_HTTP_MAX running). */
+/* Through the phone (Wi-Fi comes later). Returns the request id (S3W_EV_HTTP follows),
+ * S3W_ERR_NOT_READY (no phone), S3W_ERR_NO_RESOURCE (S3W_HTTP_MAX running).
+ * @since 1  @perm phone.http or wifi.http */
 int s3w_http_request(const s3w_http_req_t *req) S3W_IMPORT(s3w_http_request);
 
 /* --- Notifications [perm: notify] -------------------------------------------------------- */
-/* A notification from the app (at most one every 10 s: S3W_ERR_NO_RESOURCE). */
+/* A notification from the app (at most one every 10 s: S3W_ERR_NO_RESOURCE).
+ * @since 1  @perm notify */
 int s3w_notify(const char *title, int tl, const char *body, int bl) S3W_IMPORT(s3w_notify);
 
 /* --- Game services ----------------------------------------------------------------------- */
 /* Records score on board (0..S3W_HIGHSCORE_BOARDS - 1) if it beats the best: higher wins, or
  * lower with S3W_HIGHSCORE_LOWER (times). Kept in the app's storage (not counted in its quota),
- * so it survives restarts and updates. Returns 1 for a new best, 0 if not, or S3W_ERR_*. */
+ * so it survives restarts and updates. Returns 1 for a new best, 0 if not, or S3W_ERR_*.
+ * @since 1 */
 int s3w_highscore_submit(int board, int score) S3W_IMPORT(s3w_highscore_submit);
-/* The board's best: S3W_OK with *best, or S3W_ERR_NOT_FOUND before the first score. */
+/* The board's best: S3W_OK with *best, or S3W_ERR_NOT_FOUND before the first score.
+ * @since 1 */
 int s3w_highscore_get(int board, int *best) S3W_IMPORT(s3w_highscore_get);
-/* A random number 0..0x7FFFFFFF (the watch's hardware RNG). */
+/* A random number 0..0x7FFFFFFF (the watch's hardware RNG).
+ * @since 1 */
 int s3w_random(void) S3W_IMPORT(s3w_random);
 
 #endif /* __wasm__ */

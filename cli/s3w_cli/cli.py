@@ -1,21 +1,24 @@
 """s3w: the S3Wear mini app CLI.
 
   s3w new <dir> [--lang c|rust] [--id ID] [--name NAME]   an app from a template
+  s3w new <dir> --face [--id ID] [--name NAME]            a watch face from a template
   s3w build [dir] [--key K | --unsigned]                  build/app.wasm + build/<id>.s3app
   s3w pack [dir] [--key K | --unsigned]                   only the package, from build/app.wasm
   s3w sign <pkg> --key K                                  (re)sign a package
   s3w keygen [K]                                          a developer key (default ~/.s3w/dev.key)
   s3w key [K]                                             its public key, for `app key add` on the watch
   s3w verify <pkg> [--pub HEX]                            check a package
-  s3w face build|pack|verify ...                          watch faces (.s3face): s3w face --help
+  s3w face build|pack|verify|run-sim ...                  watch faces (.s3face): s3w face --help
   s3w sim install [--version V] | update | list           simulator binaries from the firmware site (~/.s3w/sim)
   s3w run-sim [dir] [--script F --screenshot F]           the simulator, reloaded on every change
   s3w install [dir|pkg] --usb [--port P] [--yes] [--trust-key]   install on the watch over USB
+  s3w check [dir] [--developer LOGIN] [--out DIR] ...     the store's automated checks (report.json + report.md)
   s3w logs [--port P] [--all]                             stream the watch's app logs
 
 Packages are signed with --key, $S3W_KEY or ~/.s3w/dev.key when it exists, else unsigned.
 """
 import argparse
+import json
 import os
 import re
 import shutil
@@ -23,7 +26,8 @@ import sys
 import zipfile
 from pathlib import Path
 
-from . import device, s3app, s3face, sim, simmgr
+from . import check as checker
+from . import device, rules, s3app, s3face, sim, simmgr
 from .project import SDK, BuildError, Project, default_key
 
 
@@ -40,7 +44,12 @@ def cmd_new(args):
     slug = re.sub(r"[^a-z0-9_]", "_", dest.name.lower()).strip("_") or "app"
     app_id = args.id or f"dev.example.{slug}"
     name = args.name or dest.name.replace("_", " ").replace("-", " ").title()[:31]
-    template = SDK / "templates" / args.lang
+    if args.face:
+        if not s3face.id_ok(app_id) or s3face.id_reserved(app_id):
+            raise BuildError(f"id '{app_id}': 1..47 of [a-z0-9._-], not starting with '.', not a built-in face's")
+        template = SDK / "templates" / "face"
+    else:
+        template = SDK / "templates" / args.lang
     subst = {
         "{{id}}": app_id,
         "{{name}}": name,
@@ -58,6 +67,9 @@ def cmd_new(args):
         for k, v in subst.items():
             text = text.replace(k, v)
         out.write_text(text)
+    if args.face:
+        print(f"{dest}: watch face {app_id} ('{name}')\n  s3w face run-sim {os.path.relpath(dest)}")
+        return
     Project(dest)  # the manifest must parse
     print(f"{dest}: {args.lang} app {app_id} ('{name}')\n  s3w run-sim {os.path.relpath(dest)}")
 
@@ -152,9 +164,36 @@ def cmd_face(args):
             raise BuildError(str(e))
         print(f"{args.pkg}: {info['id']} {info['version']}, " + (f"signed by {signer.hex()}" if signer else "unsigned"))
         return
+    if args.face_cmd == "run-sim":
+        return s3face.run_sim(args.dir, sim=args.sim, script=args.script, screenshot=args.screenshot, watch=not args.no_watch)
     key = _key(args)
     out, info = s3face.pack(args.dir, args.out, key, sim.find_sim(args.sim), render=args.face_cmd == "build")
     print(f"{out}: {info['id']} {info['version']} ({out.stat().st_size} bytes, {'signed' if key else 'unsigned'})")
+
+
+def cmd_check(args):
+    if args.print_schema:
+        print(rules.listing_schema_json(), end="")
+        return 0
+    opts = checker.Options(developer=args.developer, out=args.out, monkey_seconds=args.monkey_seconds, seed=args.seed,
+                           sim=args.sim, verify_dns=args.verify_dns, run=not args.no_run,
+                           only=args.only.split(",") if args.only else None)
+    try:
+        if args.profile:
+            opts.profile = json.loads(Path(args.profile).read_text())
+        if args.changed:
+            opts.changed = [ln.strip() for ln in Path(args.changed).read_text().splitlines() if ln.strip()]
+        if args.published:
+            opts.published = json.loads(Path(args.published).read_text())
+        if args.blocklist:
+            opts.blocklist = json.loads(Path(args.blocklist).read_text())
+    except (OSError, ValueError) as e:
+        raise BuildError(f"{e}")
+    report = checker.run_checks(args.dir, opts)
+    if args.out:
+        checker.write_report(report, args.out)
+    print(checker.markdown(report), end="")
+    return 0 if report["summary"]["ok"] else 1
 
 
 def cmd_logs(args):
@@ -175,6 +214,7 @@ def main(argv=None):
     p.add_argument("--lang", choices=("c", "rust"), default="c")
     p.add_argument("--id")
     p.add_argument("--name")
+    p.add_argument("--face", action="store_true", help="a watch face (face.json) instead of an app")
     p.set_defaults(fn=cmd_new)
     p = sub.add_parser("build", help="build and pack")
     p.add_argument("dir", nargs="?", default=".")
@@ -233,10 +273,32 @@ def main(argv=None):
         fp.add_argument("--out", help="package path (default: <dir>/build/<id>.s3face)")
         fp.add_argument("--sim", help="simulator binary (default: $S3W_SIM, build/sim/s3w_sim, s3w sim install)")
         signing(fp)
+    fp = fsub.add_parser("run-sim", help="show the face in the simulator, reloaded on every save")
+    fp.add_argument("dir", nargs="?", default=".")
+    fp.add_argument("--sim", help="simulator binary (default: $S3W_SIM, build/sim/s3w_sim, s3w sim install)")
+    fp.add_argument("--script", help="headless: run this scenario (see the simulator scripts reference)")
+    fp.add_argument("--screenshot", help="headless: write the last frame here")
+    fp.add_argument("--no-watch", action="store_true", help="do not reload on change")
     fp = fsub.add_parser("verify", help="check a face package")
     fp.add_argument("pkg")
     fp.add_argument("--pub")
     p.set_defaults(fn=cmd_face)
+    p = sub.add_parser("check", help="the store's automated checks, on your machine")
+    p.add_argument("dir", nargs="?", default=".")
+    p.add_argument("--developer", help="your login in the store repository (enables the ownership check)")
+    p.add_argument("--profile", help="your developer profile (developers/<login>.json): namespaces")
+    p.add_argument("--changed", help="a file with the paths changed in the pull request, one per line")
+    p.add_argument("--published", help="the published store index (index.json): the version must be higher")
+    p.add_argument("--out", help="write report.json, report.md and screenshots here")
+    p.add_argument("--monkey-seconds", type=int, default=120, help="random-input test length in simulated seconds (0: skip)")
+    p.add_argument("--seed", type=int, default=1, help="the monkey test's seed")
+    p.add_argument("--sim", help="simulator binary (default: $S3W_SIM, build/sim/s3w_sim, s3w sim install)")
+    p.add_argument("--blocklist", help="a JSON file with more names to keep out: trademarks, brands, offensive")
+    p.add_argument("--verify-dns", action="store_true", help="check the DNS TXT record of a domain namespace (needs dig)")
+    p.add_argument("--no-run", action="store_true", help="skip the simulator runs (run, monkey test)")
+    p.add_argument("--only", help="run only these checks (comma separated ids: layout, listing, manifest, ownership, build, ...)")
+    p.add_argument("--print-schema", action="store_true", help="print the JSON Schema of listing.json and exit")
+    p.set_defaults(fn=cmd_check)
     p = sub.add_parser("logs", help="stream the watch's app logs")
     p.add_argument("--port")
     p.add_argument("--all", action="store_true", help="every log line, not only apps")

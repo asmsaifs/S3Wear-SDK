@@ -1,0 +1,912 @@
+{
+  "api_level": 3,
+  "groups": [
+    {
+      "name": "Lifecycle",
+      "slug": "lifecycle",
+      "functions": [
+        {
+          "name": "s3w_on_start",
+          "kind": "export",
+          "signature": "void s3w_on_start(void)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Build the UI, read saved state. 250 ms budget; a hang kills the app at once."
+        },
+        {
+          "name": "s3w_on_resume",
+          "kind": "export",
+          "signature": "void s3w_on_resume(void)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "The app is visible again. Must return within 250 ms (3 overruns kill the app)."
+        },
+        {
+          "name": "s3w_on_pause",
+          "kind": "export",
+          "signature": "void s3w_on_pause(void)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "The app is covered or the screen is off. Must return within 250 ms (3 overruns kill the app)."
+        },
+        {
+          "name": "s3w_on_stop",
+          "kind": "export",
+          "signature": "void s3w_on_stop(void)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "The system ends the app (not called after s3w_exit). Must return within 250 ms (3 overruns kill the app)."
+        },
+        {
+          "name": "s3w_on_event",
+          "kind": "export",
+          "signature": "void s3w_on_event(const s3w_event_t *e)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "One event (see S3W_EV_*); e is valid only during the call. Must return within 250 ms (3 overruns kill the app)."
+        },
+        {
+          "name": "s3w_on_frame",
+          "kind": "export",
+          "signature": "void s3w_on_frame(uint32_t dt_ms)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Canvas mode: called at the requested frame rate (s3w_gfx_set_fps) while the app is visible. dt_ms is the time since the previous frame (0 for the first one after start or resume). Must return within 250 ms (3 overruns kill the app)."
+        }
+      ]
+    },
+    {
+      "name": "System",
+      "slug": "system",
+      "functions": [
+        {
+          "name": "s3w_millis",
+          "kind": "import",
+          "signature": "uint32_t s3w_millis(void)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Milliseconds since the app started (monotonic)."
+        },
+        {
+          "name": "s3w_time_unix",
+          "kind": "import",
+          "signature": "int64_t s3w_time_unix(void)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Seconds since 1970 (UTC), or 0 while the watch does not know the time."
+        },
+        {
+          "name": "s3w_time_local",
+          "kind": "import",
+          "signature": "int s3w_time_local(s3w_tm_t *out)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Local time in the watch's time zone. S3W_ERR_NOT_READY while the time is unknown."
+        },
+        {
+          "name": "s3w_log",
+          "kind": "import",
+          "signature": "void s3w_log(int level, const char *msg, int len)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Writes msg (UTF-8, len bytes) to the app log at a level S3W_LOG_*; `s3w logs` shows it."
+        },
+        {
+          "name": "s3w_exit",
+          "kind": "import",
+          "signature": "void s3w_exit(void)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Ends the app at once (s3w_on_stop is not called)."
+        },
+        {
+          "name": "s3w_timer_start",
+          "kind": "import",
+          "signature": "int s3w_timer_start(uint32_t period_ms, bool repeat)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Starts a timer (at least 20 ms, up to 8 at once): S3W_EV_TIMER with its id after each period. Returns the id (> 0) or S3W_ERR_*."
+        },
+        {
+          "name": "s3w_timer_stop",
+          "kind": "import",
+          "signature": "void s3w_timer_stop(int id)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Stops a timer. An id that is not running (a one-shot that fired) is ignored."
+        },
+        {
+          "name": "s3w_keep_screen_on",
+          "kind": "import",
+          "signature": "void s3w_keep_screen_on(bool on)",
+          "since": 1,
+          "permissions": [
+            "keep_screen_on"
+          ],
+          "permissions_mode": "all",
+          "doc": "Holds the screen on while the app is in the foreground (released when it ends)."
+        },
+        {
+          "name": "s3w_locale",
+          "kind": "import",
+          "signature": "int s3w_locale(char *buf, int cap)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "The UI language as a BCP 47 tag (\"en\", \"de\", \"bn\"), like snprintf: writes at most cap bytes including a terminating NUL and returns the tag's length."
+        }
+      ]
+    },
+    {
+      "name": "Widgets mode",
+      "slug": "widgets-mode",
+      "functions": [
+        {
+          "name": "s3w_ui_screen",
+          "kind": "import",
+          "signature": "int s3w_ui_screen(void)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "The app's full-screen root container (black, no padding, scrolls vertically if needed)."
+        },
+        {
+          "name": "s3w_ui_label",
+          "kind": "import",
+          "signature": "int s3w_ui_label(int parent, const char *text, int len)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "A text label inside parent (a container handle). Returns its handle."
+        },
+        {
+          "name": "s3w_ui_button",
+          "kind": "import",
+          "signature": "int s3w_ui_button(int parent, const char *text, int len)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Pill button: S3W_EV_CLICK."
+        },
+        {
+          "name": "s3w_ui_list",
+          "kind": "import",
+          "signature": "int s3w_ui_list(int parent)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Full-size vertical list inset from the round corners."
+        },
+        {
+          "name": "s3w_ui_list_add",
+          "kind": "import",
+          "signature": "int s3w_ui_list_add(int list, int icon, const char *text, int len)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "A tappable row (S3W_EV_CLICK with the row's handle); icon is S3W_ICON_*."
+        },
+        {
+          "name": "s3w_ui_image",
+          "kind": "import",
+          "signature": "int s3w_ui_image(int parent, const char *asset_path, int len)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "An image from the app's assets. S3W_ERR_NOT_FOUND for now: packages carry assets/, but loading them is not done yet."
+        },
+        {
+          "name": "s3w_ui_image_file",
+          "kind": "import",
+          "signature": "int s3w_ui_image_file(int parent, const char *path, int len, int max_w, int max_h)",
+          "since": 2,
+          "permissions": [
+            "files"
+          ],
+          "permissions_mode": "all",
+          "doc": "A picture from the device's files (path as in s3w_fs_list): PNG, baseline JPEG or BMP (24 / 32 bit), reduced to fit max_w x max_h px (1..S3W_FILE_IMAGE_MAX_SIDE; aspect kept, never enlarged). The watch decodes it before returning, off the UI task: a PNG or BMP of up to S3W_FILE_IMAGE_MAX_PIXELS, a JPEG of up to S3W_FILE_JPEG_MAX_PIXELS, a file of up to 3 MB, shrunk by at most 16 times; more is S3W_ERR_NO_RESOURCE. S3W_ERR_NOT_FOUND (no such file), S3W_ERR_INVALID (path, size, progressive JPEG, damaged or another format), S3W_ERR_DENIED (not a user place). Returns the widget."
+        },
+        {
+          "name": "s3w_ui_arc",
+          "kind": "import",
+          "signature": "int s3w_ui_arc(int parent, int min, int max, int value)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Progress ring (display only)."
+        },
+        {
+          "name": "s3w_ui_slider",
+          "kind": "import",
+          "signature": "int s3w_ui_slider(int parent, int min, int max, int value)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "S3W_EV_VALUE while dragged."
+        },
+        {
+          "name": "s3w_ui_switch",
+          "kind": "import",
+          "signature": "int s3w_ui_switch(int parent, bool on)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "S3W_EV_VALUE (0/1) when toggled."
+        },
+        {
+          "name": "s3w_ui_set_text",
+          "kind": "import",
+          "signature": "void s3w_ui_set_text(int h, const char *text, int len)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Label or button text."
+        },
+        {
+          "name": "s3w_ui_set_value",
+          "kind": "import",
+          "signature": "void s3w_ui_set_value(int h, int v)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Arc, slider (clamped to their range) or switch (0/1)."
+        },
+        {
+          "name": "s3w_ui_set_pos",
+          "kind": "import",
+          "signature": "void s3w_ui_set_pos(int h, int x, int y)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Moves a widget to (x, y) px relative to its parent (an offset from its S3W_STYLE_ALIGN placement)."
+        },
+        {
+          "name": "s3w_ui_set_size",
+          "kind": "import",
+          "signature": "void s3w_ui_set_size(int h, int w, int hgt)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Buttons are at least 160 px wide until their size is set."
+        },
+        {
+          "name": "s3w_ui_set_style",
+          "kind": "import",
+          "signature": "void s3w_ui_set_style(int h, int prop, int value)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "prop is S3W_STYLE_*; an unknown prop or bad value returns quietly (nothing changes)."
+        },
+        {
+          "name": "s3w_ui_delete",
+          "kind": "import",
+          "signature": "void s3w_ui_delete(int h)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Deletes the widget and its children (their handles die too). Not the screen."
+        },
+        {
+          "name": "s3w_ui_toast",
+          "kind": "import",
+          "signature": "void s3w_ui_toast(const char *text, int len)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Shows a short message over the app for a moment."
+        },
+        {
+          "name": "s3w_ui_dialog",
+          "kind": "import",
+          "signature": "int s3w_ui_dialog(const char *title, int tl, const char *body, int bl, const char *ok, int ol)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Confirm dialog over the app: S3W_EV_DIALOG with the returned id. One at a time."
+        }
+      ]
+    },
+    {
+      "name": "Canvas mode",
+      "slug": "canvas-mode",
+      "functions": [
+        {
+          "name": "s3w_gfx_set_fps",
+          "kind": "import",
+          "signature": "void s3w_gfx_set_fps(int fps)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Frames per second for s3w_on_frame, clamped to 1..S3W_GFX_FPS_MAX (default 30)."
+        },
+        {
+          "name": "s3w_gfx_clear",
+          "kind": "import",
+          "signature": "void s3w_gfx_clear(uint16_t color)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Fills the whole canvas with color (RGB565, see S3W_RGB565)."
+        },
+        {
+          "name": "s3w_gfx_rect",
+          "kind": "import",
+          "signature": "void s3w_gfx_rect(int x, int y, int w, int h, uint16_t color, bool fill)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Filled, or a 1 px outline."
+        },
+        {
+          "name": "s3w_gfx_circle",
+          "kind": "import",
+          "signature": "void s3w_gfx_circle(int cx, int cy, int r, uint16_t color, bool fill)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "A circle of radius r around (cx, cy): filled, or a 1 px outline."
+        },
+        {
+          "name": "s3w_gfx_line",
+          "kind": "import",
+          "signature": "void s3w_gfx_line(int x0, int y0, int x1, int y1, uint16_t color, int width)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "width 1..16 px."
+        },
+        {
+          "name": "s3w_gfx_text",
+          "kind": "import",
+          "signature": "void s3w_gfx_text(int x, int y, const char *t, int len, int font, uint16_t color)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "(x, y) is the top left of the first line; '\\n' starts a new line. font is S3W_FONT_*. At most 255 bytes of UTF-8."
+        },
+        {
+          "name": "s3w_gfx_text_width",
+          "kind": "import",
+          "signature": "int s3w_gfx_text_width(const char *t, int len, int font)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Width in px of one line of text in that font (for centring)."
+        },
+        {
+          "name": "s3w_gfx_sprite_create",
+          "kind": "import",
+          "signature": "int s3w_gfx_sprite_create(const uint16_t *pixels, int w, int h, int frames, int key)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "A sprite from RGB565 pixels in app memory (copied: the app may reuse its buffer). frames frames of w x h px are stacked top to bottom (pixels holds w * h * frames values). key is the transparent colour, or S3W_SPRITE_NO_KEY. Returns the sprite id (> 0) or S3W_ERR_INVALID (bad size) / S3W_ERR_NO_RESOURCE (S3W_SPRITE_MAX or S3W_SPRITE_MAX_BYTES reached)."
+        },
+        {
+          "name": "s3w_gfx_sprite_load",
+          "kind": "import",
+          "signature": "int s3w_gfx_sprite_load(const char *asset, int len)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "A sprite from the app's assets. S3W_ERR_NOT_FOUND for now: packages carry assets/, but loading them is not done yet."
+        },
+        {
+          "name": "s3w_gfx_sprite",
+          "kind": "import",
+          "signature": "void s3w_gfx_sprite(int id, int x, int y, int frame, int flags)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Draws frame (0-based) of sprite id with its top left at (x, y); flags S3W_SPRITE_FLIP_*. An unknown id or a frame out of range traps."
+        },
+        {
+          "name": "s3w_gfx_blit",
+          "kind": "import",
+          "signature": "void s3w_gfx_blit(const uint16_t *pixels, int x, int y, int w, int h)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Copies w x h RGB565 pixels (row by row) from app memory."
+        },
+        {
+          "name": "s3w_gfx_present",
+          "kind": "import",
+          "signature": "void s3w_gfx_present(void)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Ends the frame: what was drawn since the last present goes to the display once the current callback returns."
+        }
+      ]
+    },
+    {
+      "name": "Sensors",
+      "slug": "sensors",
+      "functions": [
+        {
+          "name": "s3w_imu_start",
+          "kind": "import",
+          "signature": "int s3w_imu_start(int rate_hz)",
+          "since": 1,
+          "permissions": [
+            "imu"
+          ],
+          "permissions_mode": "all",
+          "doc": "Streams the accelerometer as S3W_EV_IMU events at about rate_hz (1..100 asked; the sensor runs at 62.5 Hz) while the app is visible. Returns the rate used. No gyroscope data yet."
+        },
+        {
+          "name": "s3w_imu_stop",
+          "kind": "import",
+          "signature": "void s3w_imu_stop(void)",
+          "since": 1,
+          "permissions": [
+            "imu"
+          ],
+          "permissions_mode": "all",
+          "doc": "Stops the accelerometer stream."
+        },
+        {
+          "name": "s3w_tilt",
+          "kind": "import",
+          "signature": "int s3w_tilt(float *pitch, float *roll)",
+          "since": 1,
+          "permissions": [
+            "imu"
+          ],
+          "permissions_mode": "all",
+          "doc": "Pitch and roll in degrees from the latest sample (0, 0 lying face up; pitch > 0: 12 o'clock raised, roll > 0: 3 o'clock raised). Starts the accelerometer if no stream runs (no events then): S3W_ERR_NOT_READY until it has a sample."
+        }
+      ]
+    },
+    {
+      "name": "Audio",
+      "slug": "audio",
+      "functions": [
+        {
+          "name": "s3w_audio_tone",
+          "kind": "import",
+          "signature": "int s3w_audio_tone(int freq_hz, int ms, int volume)",
+          "since": 1,
+          "permissions": [
+            "audio.play"
+          ],
+          "permissions_mode": "all",
+          "doc": "A tone, freq_hz 20..8000 for ms 1..10000 (replaces the app's tone if one plays)."
+        },
+        {
+          "name": "s3w_audio_play",
+          "kind": "import",
+          "signature": "int s3w_audio_play(const char *asset, int len, int volume)",
+          "since": 1,
+          "permissions": [
+            "audio.play"
+          ],
+          "permissions_mode": "all",
+          "doc": "A WAV from the app's assets. S3W_ERR_NOT_FOUND for now: packages carry assets/, but loading them is not done yet."
+        },
+        {
+          "name": "s3w_audio_stream_open",
+          "kind": "import",
+          "signature": "int s3w_audio_stream_open(int sample_rate)",
+          "since": 1,
+          "permissions": [
+            "audio.play"
+          ],
+          "permissions_mode": "all",
+          "doc": "16-bit mono PCM; sample_rate 16000 only (else S3W_ERR_UNSUPPORTED). One stream: returns its handle. The volume is the media volume."
+        },
+        {
+          "name": "s3w_audio_stream_write",
+          "kind": "import",
+          "signature": "int s3w_audio_stream_write(int h, const int16_t *pcm, int samples)",
+          "since": 1,
+          "permissions": [
+            "audio.play"
+          ],
+          "permissions_mode": "all",
+          "doc": "Queues samples without waiting (the buffer holds 1 s); returns how many were taken."
+        },
+        {
+          "name": "s3w_audio_stop",
+          "kind": "import",
+          "signature": "void s3w_audio_stop(int h)",
+          "since": 1,
+          "permissions": [
+            "audio.play"
+          ],
+          "permissions_mode": "all",
+          "doc": "Stops a stream (its handle), or with 0 the app's tone and stream."
+        },
+        {
+          "name": "s3w_mic_start",
+          "kind": "import",
+          "signature": "int s3w_mic_start(int sample_rate)",
+          "since": 1,
+          "permissions": [
+            "audio.record"
+          ],
+          "permissions_mode": "all",
+          "doc": "Starts the microphone. S3W_ERR_UNSUPPORTED until the watch has voice support."
+        },
+        {
+          "name": "s3w_mic_stop",
+          "kind": "import",
+          "signature": "void s3w_mic_stop(void)",
+          "since": 1,
+          "permissions": [
+            "audio.record"
+          ],
+          "permissions_mode": "all",
+          "doc": "Stops the microphone."
+        }
+      ]
+    },
+    {
+      "name": "Storage",
+      "slug": "storage",
+      "functions": [
+        {
+          "name": "s3w_kv_get",
+          "kind": "import",
+          "signature": "int s3w_kv_get(const char *k, int kl, void *buf, int cap)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "The value's length (copies at most cap bytes), or S3W_ERR_NOT_FOUND."
+        },
+        {
+          "name": "s3w_kv_set",
+          "kind": "import",
+          "signature": "int s3w_kv_set(const char *k, int kl, const void *v, int vl)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "vl \u2264 S3W_KV_VALUE_MAX. S3W_ERR_NO_SPACE over the quota."
+        },
+        {
+          "name": "s3w_kv_delete",
+          "kind": "import",
+          "signature": "int s3w_kv_delete(const char *k, int kl)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Deletes a key. S3W_OK, or a negative S3W_ERR_* (S3W_ERR_INVALID for a bad key)."
+        },
+        {
+          "name": "s3w_file_open",
+          "kind": "import",
+          "signature": "int s3w_file_open(const char *name, int len, int mode)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "mode S3W_FILE_*: returns fd (\u2265 1), S3W_ERR_NOT_FOUND (read), S3W_ERR_NO_RESOURCE (4 open)."
+        },
+        {
+          "name": "s3w_file_read",
+          "kind": "import",
+          "signature": "int s3w_file_read(int fd, void *buf, int n)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Bytes read (0 at the end) or written (S3W_ERR_NO_SPACE over the quota)."
+        },
+        {
+          "name": "s3w_file_write",
+          "kind": "import",
+          "signature": "int s3w_file_write(int fd, const void *buf, int n)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Writes n bytes to a file opened with S3W_FILE_WRITE or S3W_FILE_APPEND. Returns the bytes written, or S3W_ERR_NO_SPACE over the quota."
+        },
+        {
+          "name": "s3w_file_close",
+          "kind": "import",
+          "signature": "void s3w_file_close(int fd)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Closes a file."
+        },
+        {
+          "name": "s3w_file_delete",
+          "kind": "import",
+          "signature": "int s3w_file_delete(const char *name, int len)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Deletes one of the app's files. S3W_OK, or a negative S3W_ERR_* (S3W_ERR_NOT_FOUND if there is none)."
+        }
+      ]
+    },
+    {
+      "name": "Device files",
+      "slug": "device-files",
+      "functions": [
+        {
+          "name": "s3w_fs_list",
+          "kind": "import",
+          "signature": "int s3w_fs_list(const char *dir, int dl, const char *after, int al, s3w_fs_entry_t *out, int max)",
+          "since": 2,
+          "permissions": [
+            "files"
+          ],
+          "permissions_mode": "all",
+          "doc": "Lists a directory in name order (ASCII letters ignore their case; directories and files together): the entries whose name sorts after `after` (al = 0: from the first), at most max of them. Paging: pass the last name of a page to get the next, so the pages stay right while files come and go. Returns how many were written (0 = past the end), S3W_ERR_NOT_FOUND (no such directory, or no card), S3W_ERR_DENIED, S3W_ERR_INVALID (path, `after` longer than S3W_FS_NAME_MAX, max 1..32)."
+        },
+        {
+          "name": "s3w_fs_delete",
+          "kind": "import",
+          "signature": "int s3w_fs_delete(const char *path, int len)",
+          "since": 2,
+          "permissions": [
+            "files"
+          ],
+          "permissions_mode": "all",
+          "doc": "Deletes a file or an empty directory (one that holds only hidden files, which are not listed, counts as empty and they go with it). S3W_ERR_NOT_FOUND, S3W_ERR_DENIED (not a user place, a root, or a directory with anything else in it), S3W_ERR_IO."
+        },
+        {
+          "name": "s3w_fs_open",
+          "kind": "import",
+          "signature": "int s3w_fs_open(const char *path, int len)",
+          "since": 2,
+          "permissions": [
+            "files"
+          ],
+          "permissions_mode": "all",
+          "doc": "Opens a file for reading; one at a time (S3W_ERR_NO_RESOURCE while another is open). Returns the file's size in bytes (a file over 2 GB: S3W_ERR_INVALID) or S3W_ERR_NOT_FOUND / S3W_ERR_DENIED. Closed with the app."
+        },
+        {
+          "name": "s3w_fs_read",
+          "kind": "import",
+          "signature": "int s3w_fs_read(void *buf, int n)",
+          "since": 2,
+          "permissions": [
+            "files"
+          ],
+          "permissions_mode": "all",
+          "doc": "Bytes read from the open file (0 at the end), up to n (\u2264 4096 per call). S3W_ERR_NOT_READY: none is open."
+        },
+        {
+          "name": "s3w_fs_close",
+          "kind": "import",
+          "signature": "void s3w_fs_close(void)",
+          "since": 2,
+          "permissions": [
+            "files"
+          ],
+          "permissions_mode": "all",
+          "doc": "Closes the file opened by s3w_fs_open (also done when the app ends)."
+        }
+      ]
+    },
+    {
+      "name": "Game Boy core",
+      "slug": "game-boy-core",
+      "functions": [
+        {
+          "name": "s3w_gb_list",
+          "kind": "import",
+          "signature": "int s3w_gb_list(const char *dir, int dl, const char *after, int al, s3w_fs_entry_t *out, int max)",
+          "since": 3,
+          "permissions": [
+            "gameboy"
+          ],
+          "permissions_mode": "all",
+          "doc": "Lists a folder of the card for the game library: like s3w_fs_list (name order, paging by the last name, at most 32 entries per call), but only folders and cartridge files (.gb, .gbc, any case); anything else is left out. The permission \"gameboy\" is enough: the app cannot see, read or delete other files. S3W_ERR_DENIED outside \"/sd\", S3W_ERR_NOT_FOUND (no such folder, or no card)."
+        },
+        {
+          "name": "s3w_gb_probe",
+          "kind": "import",
+          "signature": "int s3w_gb_probe(const char *path, int len, s3w_gb_info_t *out)",
+          "since": 3,
+          "permissions": [
+            "gameboy"
+          ],
+          "permissions_mode": "all",
+          "doc": "Reads the header of a cartridge file into `out`. S3W_OK; S3W_ERR_INVALID: damaged header, truncated file (`out` is still filled when the header could be read); S3W_ERR_NOT_FOUND, S3W_ERR_DENIED (not on the card), S3W_ERR_IO. Check `out->supported` before loading."
+        },
+        {
+          "name": "s3w_gb_load",
+          "kind": "import",
+          "signature": "int s3w_gb_load(const char *path, int len)",
+          "since": 3,
+          "permissions": [
+            "gameboy"
+          ],
+          "permissions_mode": "all",
+          "doc": "Opens the cartridge and its save file and resets the console. S3W_ERR_UNSUPPORTED (mapper, colour-only game), S3W_ERR_INVALID (damaged header, or a save of the wrong size, which is never overwritten), S3W_ERR_NO_RESOURCE (a game is already loaded, or out of memory), S3W_ERR_IO."
+        },
+        {
+          "name": "s3w_gb_unload",
+          "kind": "import",
+          "signature": "int s3w_gb_unload(void)",
+          "since": 3,
+          "permissions": [
+            "gameboy"
+          ],
+          "permissions_mode": "all",
+          "doc": "Writes the cartridge RAM if it changed and closes the game (also done when the app ends). S3W_ERR_NOT_READY: nothing loaded; S3W_ERR_IO: the save could not be written."
+        },
+        {
+          "name": "s3w_gb_input",
+          "kind": "import",
+          "signature": "void s3w_gb_input(uint32_t buttons)",
+          "since": 3,
+          "permissions": [
+            "gameboy"
+          ],
+          "permissions_mode": "all",
+          "doc": "The buttons held now (S3W_GB_* or-ed together); stays until the next call."
+        },
+        {
+          "name": "s3w_gb_run_frame",
+          "kind": "import",
+          "signature": "int s3w_gb_run_frame(int x, int y, int scale, uint32_t flags)",
+          "since": 3,
+          "permissions": [
+            "gameboy"
+          ],
+          "permissions_mode": "all",
+          "doc": "Runs the console for one video frame (1/59.7 s) and draws it with its top left at (x, y) of the canvas at scale S3W_GB_SCALE_*: 160x144, 320x288 or 400x360 px. The whole picture must lie inside the canvas (S3W_ERR_INVALID). Only the lines that changed since the last call that drew are written to the canvas and marked as drawn (a still screen costs next to nothing); present as usual (s3w_gfx_present). After you draw over the picture (a menu) pass S3W_GB_REDRAW; moving it, changing the scale or the palette redraws it by itself. S3W_GB_NO_DRAW emulates the frame without drawing: when the display cannot keep up, run the missed frames this way and draw only the last, so the game keeps its speed (the app paces: dt_ms of s3w_on_frame / 16.74 ms per frame). Returns the milliseconds it took, S3W_ERR_NOT_READY (nothing loaded, or drawing without a canvas), S3W_ERR_IO (the card failed mid-game: stop), S3W_ERR_UNSUPPORTED (the game did something the core cannot do)."
+        },
+        {
+          "name": "s3w_gb_flush_ram",
+          "kind": "import",
+          "signature": "int s3w_gb_flush_ram(void)",
+          "since": 3,
+          "permissions": [
+            "gameboy"
+          ],
+          "permissions_mode": "all",
+          "doc": "Writes the cartridge RAM now if it changed."
+        },
+        {
+          "name": "s3w_gb_set_palette",
+          "kind": "import",
+          "signature": "int s3w_gb_set_palette(const uint16_t *pal)",
+          "since": 3,
+          "permissions": [
+            "gameboy"
+          ],
+          "permissions_mode": "all",
+          "doc": "The four shades from lightest to darkest, RGB565 (default: white to black)."
+        },
+        {
+          "name": "s3w_gb_save_state",
+          "kind": "import",
+          "signature": "int s3w_gb_save_state(int slot)",
+          "since": 3,
+          "permissions": [
+            "gameboy"
+          ],
+          "permissions_mode": "all",
+          "doc": "Save states: the whole console in \"<game>.st<slot>\" next to the ROM (slot 0..3; the card, not the flash). s3w_gb_save_state writes it atomically; s3w_gb_load_state puts the console back (the next frame is drawn in full). Errors: S3W_ERR_NOT_READY (nothing loaded), S3W_ERR_INVALID (slot, or a file that is not a state of this game and this firmware's core, or damaged: the console is left as it was), S3W_ERR_NOT_FOUND (load: no such state), S3W_ERR_IO. A state does not survive a firmware update that changes the core."
+        },
+        {
+          "name": "s3w_gb_load_state",
+          "kind": "import",
+          "signature": "int s3w_gb_load_state(int slot)",
+          "since": 3,
+          "permissions": [
+            "gameboy"
+          ],
+          "permissions_mode": "all",
+          "doc": "Puts the console back to the state saved in slot by s3w_gb_save_state; errors as there."
+        },
+        {
+          "name": "s3w_gb_set_audio",
+          "kind": "import",
+          "signature": "int s3w_gb_set_audio(bool on, int volume)",
+          "since": 3,
+          "permissions": [
+            "gameboy",
+            "audio.play"
+          ],
+          "permissions_mode": "all",
+          "doc": "The console's sound: on = true opens the 16 kHz PCM stream (the one s3w_audio_stream_open uses: one at a time, S3W_ERR_NO_RESOURCE while the app has its own open) and from then on every frame run by s3w_gb_run_frame, drawn or not, adds its sound (mono, volume 0..100 of full); false closes it. Calling again with on = true only changes the volume. Needs \"audio.play\" as well as \"gameboy\". Sound that is more than about 150 ms ahead of the speaker is dropped, so the picture can fall behind without the sound lagging. Muted by the watch's Silent mode like any stream. S3W_ERR_UNSUPPORTED: no audio on this watch. The sound registers follow the game whether or not sound is on, and switching it on mid-game plays what is playing."
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "slug": "health",
+      "functions": [
+        {
+          "name": "s3w_health_today",
+          "kind": "import",
+          "signature": "int s3w_health_today(s3w_health_summary_t *out)",
+          "since": 1,
+          "permissions": [
+            "health.read"
+          ],
+          "permissions_mode": "all",
+          "doc": "Today's totals. S3W_ERR_UNSUPPORTED until the watch has activity tracking."
+        }
+      ]
+    },
+    {
+      "name": "Network",
+      "slug": "network",
+      "functions": [
+        {
+          "name": "s3w_http_request",
+          "kind": "import",
+          "signature": "int s3w_http_request(const s3w_http_req_t *req)",
+          "since": 1,
+          "permissions": [
+            "phone.http",
+            "wifi.http"
+          ],
+          "permissions_mode": "any",
+          "doc": "Through the phone (Wi-Fi comes later). Returns the request id (S3W_EV_HTTP follows), S3W_ERR_NOT_READY (no phone), S3W_ERR_NO_RESOURCE (S3W_HTTP_MAX running)."
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "slug": "notifications",
+      "functions": [
+        {
+          "name": "s3w_notify",
+          "kind": "import",
+          "signature": "int s3w_notify(const char *title, int tl, const char *body, int bl)",
+          "since": 1,
+          "permissions": [
+            "notify"
+          ],
+          "permissions_mode": "all",
+          "doc": "A notification from the app (at most one every 10 s: S3W_ERR_NO_RESOURCE)."
+        }
+      ]
+    },
+    {
+      "name": "Game services",
+      "slug": "game-services",
+      "functions": [
+        {
+          "name": "s3w_highscore_submit",
+          "kind": "import",
+          "signature": "int s3w_highscore_submit(int board, int score)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "Records score on board (0..S3W_HIGHSCORE_BOARDS - 1) if it beats the best: higher wins, or lower with S3W_HIGHSCORE_LOWER (times). Kept in the app's storage (not counted in its quota), so it survives restarts and updates. Returns 1 for a new best, 0 if not, or S3W_ERR_*."
+        },
+        {
+          "name": "s3w_highscore_get",
+          "kind": "import",
+          "signature": "int s3w_highscore_get(int board, int *best)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "The board's best: S3W_OK with *best, or S3W_ERR_NOT_FOUND before the first score."
+        },
+        {
+          "name": "s3w_random",
+          "kind": "import",
+          "signature": "int s3w_random(void)",
+          "since": 1,
+          "permissions": [],
+          "permissions_mode": "all",
+          "doc": "A random number 0..0x7FFFFFFF (the watch's hardware RNG)."
+        }
+      ]
+    }
+  ]
+}

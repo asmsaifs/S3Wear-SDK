@@ -1,0 +1,13 @@
+{
+  "id": "dev.you.bounce",
+  "name": "Bounce",
+  "version": "0.1.0",
+  "api_level": 1,
+  "category": "game",
+  "author": "",
+  "description": "Keep the ball in the air.",
+  "entry": "app.wasm",
+  "ui_mode": "canvas",
+  "memory_kb": 64,
+  "permissions": []
+}

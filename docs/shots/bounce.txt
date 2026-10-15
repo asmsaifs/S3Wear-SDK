@@ -1,0 +1,5 @@
+wait 600
+tap 205 300
+wait 300
+tap 205 300
+wait 300

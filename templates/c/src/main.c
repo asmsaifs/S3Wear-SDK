@@ -4,8 +4,8 @@
  *   s3w build .     -> build/app.wasm and build/{{id}}.s3app
  *   s3w run-sim .   -> the simulator, rebuilt and reloaded on every save
  *
- * Freestanding C: no libc (sdk/include/s3w.h is the whole API). Callbacks must return within
- * 50 ms (s3w_on_start: 250 ms). The developer docs have the API and the rules.
+ * Freestanding C: no libc (s3w.h is the whole API). Callbacks must return within
+ * 250 ms. The developer docs have the API and the rules.
  */
 #include "s3w.h"
 

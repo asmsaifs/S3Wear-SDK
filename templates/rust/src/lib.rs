@@ -4,7 +4,7 @@
 //!   s3w run-sim .   -> the simulator, rebuilt and reloaded on every save
 //!
 //! A `no_std` cdylib: the lifecycle functions below are the app's exports. Callbacks must return
-//! within 50 ms (s3w_on_start: 250 ms). The developer docs have the API and the rules.
+//! within 250 ms. The developer docs have the API and the rules.
 #![no_std]
 
 use s3w::sys::*;

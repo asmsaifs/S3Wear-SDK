@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "S3Wear store listing (listing.json)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "developer",
+    "summary",
+    "support_url",
+    "source_url",
+    "content_rating"
+  ],
+  "properties": {
+    "developer": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$",
+      "description": "Your login in the store repository."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "description": "One line."
+    },
+    "support_url": {
+      "type": "string",
+      "pattern": "^https://[^\\s/$.?#][^\\s]*$",
+      "maxLength": 200
+    },
+    "source_url": {
+      "type": "string",
+      "pattern": "^https://[^\\s/$.?#][^\\s]*$",
+      "maxLength": 200
+    },
+    "privacy_url": {
+      "type": "string",
+      "pattern": "^https://[^\\s/$.?#][^\\s]*$",
+      "maxLength": 200,
+      "description": "Required with phone.http, wifi.http, location, audio.record, health.read or files."
+    },
+    "donate_url": {
+      "type": "string",
+      "pattern": "^https://[^\\s/$.?#][^\\s]*$",
+      "maxLength": 200,
+      "description": "Optional link to donate."
+    },
+    "permission_reasons": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "description": "A reason for every permission in the manifest."
+    },
+    "http_reasons": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "description": "A reason for every host in http_hosts."
+    },
+    "content_rating": {
+      "enum": [
+        "everyone",
+        "teen"
+      ]
+    },
+    "screenshot_captions": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 60
+      }
+    }
+  }
+}

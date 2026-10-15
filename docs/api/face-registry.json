@@ -1,0 +1,336 @@
+{
+ "api": 1,
+ "bindings": [
+  {
+   "name": "time.hh:mm",
+   "text": true,
+   "value": true,
+   "deps": [
+    "time"
+   ]
+  },
+  {
+   "name": "time.hh",
+   "text": true,
+   "value": true,
+   "deps": [
+    "time"
+   ]
+  },
+  {
+   "name": "time.mm",
+   "text": true,
+   "value": true,
+   "deps": [
+    "time"
+   ]
+  },
+  {
+   "name": "time.ss",
+   "text": true,
+   "value": true,
+   "deps": [
+    "time",
+    "second"
+   ]
+  },
+  {
+   "name": "time.ampm",
+   "text": true,
+   "value": true,
+   "deps": [
+    "time"
+   ]
+  },
+  {
+   "name": "time.hour",
+   "text": false,
+   "value": true,
+   "deps": [
+    "time"
+   ]
+  },
+  {
+   "name": "time.minute",
+   "text": false,
+   "value": true,
+   "deps": [
+    "time",
+    "second"
+   ]
+  },
+  {
+   "name": "time.second",
+   "text": false,
+   "value": true,
+   "deps": [
+    "time",
+    "second"
+   ]
+  },
+  {
+   "name": "date.<pattern>",
+   "text": true,
+   "value": true,
+   "deps": [
+    "time"
+   ]
+  },
+  {
+   "name": "battery.percent",
+   "text": true,
+   "value": true,
+   "deps": [
+    "battery"
+   ]
+  },
+  {
+   "name": "battery.ratio",
+   "text": true,
+   "value": true,
+   "deps": [
+    "battery"
+   ]
+  },
+  {
+   "name": "battery.charging",
+   "text": true,
+   "value": true,
+   "deps": [
+    "battery"
+   ]
+  },
+  {
+   "name": "steps.count",
+   "text": true,
+   "value": true,
+   "deps": [
+    "steps"
+   ]
+  },
+  {
+   "name": "steps.goal",
+   "text": true,
+   "value": true,
+   "deps": [
+    "steps"
+   ]
+  },
+  {
+   "name": "steps.goal_ratio",
+   "text": true,
+   "value": true,
+   "deps": [
+    "steps"
+   ]
+  },
+  {
+   "name": "weather.temp",
+   "text": true,
+   "value": true,
+   "deps": [
+    "weather"
+   ]
+  },
+  {
+   "name": "weather.low",
+   "text": true,
+   "value": true,
+   "deps": [
+    "weather"
+   ]
+  },
+  {
+   "name": "weather.high",
+   "text": true,
+   "value": true,
+   "deps": [
+    "weather"
+   ]
+  },
+  {
+   "name": "weather.condition",
+   "text": true,
+   "value": true,
+   "deps": [
+    "weather"
+   ]
+  },
+  {
+   "name": "phone.battery",
+   "text": true,
+   "value": true,
+   "deps": [
+    "phone"
+   ]
+  },
+  {
+   "name": "next_event.title",
+   "text": true,
+   "value": false,
+   "deps": [
+    "event"
+   ]
+  },
+  {
+   "name": "next_event.time",
+   "text": true,
+   "value": true,
+   "deps": [
+    "time",
+    "event"
+   ]
+  },
+  {
+   "name": "heart.bpm",
+   "text": true,
+   "value": true,
+   "deps": [
+    "heart"
+   ]
+  },
+  {
+   "name": "notifications.count",
+   "text": true,
+   "value": true,
+   "deps": [
+    "notify"
+   ]
+  },
+  {
+   "name": "moon.phase",
+   "text": true,
+   "value": true,
+   "deps": [
+    "time"
+   ]
+  },
+  {
+   "name": "moon.illumination",
+   "text": true,
+   "value": true,
+   "deps": [
+    "time"
+   ]
+  }
+ ],
+ "fonts": [
+  "digits_160",
+  "digits_96",
+  "digits_96_light",
+  "title_32",
+  "body_26",
+  "caption_22"
+ ],
+ "complications": [
+  {
+   "id": "battery",
+   "name": "Battery",
+   "app": "battery",
+   "deps": [
+    "battery"
+   ]
+  },
+  {
+   "id": "steps",
+   "name": "Steps",
+   "app": "activity",
+   "deps": [
+    "steps"
+   ]
+  },
+  {
+   "id": "date",
+   "name": "Date",
+   "app": "calendar",
+   "deps": [
+    "time"
+   ]
+  },
+  {
+   "id": "weather",
+   "name": "Weather",
+   "app": "weather",
+   "deps": [
+    "weather"
+   ]
+  },
+  {
+   "id": "next_event",
+   "name": "Next event",
+   "app": "calendar",
+   "deps": [
+    "time",
+    "event"
+   ]
+  },
+  {
+   "id": "sunrise",
+   "name": "Sunrise/sunset",
+   "app": "weather",
+   "deps": [
+    "time",
+    "sun"
+   ]
+  },
+  {
+   "id": "world_time",
+   "name": "World time",
+   "app": "world_clock",
+   "deps": [
+    "time",
+    "world"
+   ]
+  },
+  {
+   "id": "phone_battery",
+   "name": "Phone battery",
+   "app": null,
+   "deps": [
+    "phone"
+   ]
+  },
+  {
+   "id": "heart_rate",
+   "name": "Heart rate",
+   "app": "heart_rate",
+   "deps": [
+    "heart"
+   ]
+  },
+  {
+   "id": "alarm",
+   "name": "Alarm",
+   "app": "alarms",
+   "deps": [
+    "time",
+    "alarm"
+   ]
+  },
+  {
+   "id": "timer",
+   "name": "Timer",
+   "app": "timer",
+   "deps": [
+    "time",
+    "timer"
+   ]
+  },
+  {
+   "id": "notifications",
+   "name": "Notifications",
+   "app": "notifications",
+   "deps": [
+    "notify"
+   ]
+  },
+  {
+   "id": "moon",
+   "name": "Moon phase",
+   "app": null,
+   "deps": [
+    "time"
+   ]
+  }
+ ]
+}

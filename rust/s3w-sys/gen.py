@@ -66,6 +66,20 @@ def field_name(name):
     return f"r#{name}" if name in RUST_KEYWORDS else name
 
 
+def parse_decl(stmt):
+    """One whitespace-normalised declaration ending in S3W_IMPORT(name) or S3W_EXPORT(name) ->
+    (name, return type, [(param name, C type)], "import" | "export"). Shared with sdk/tools/gen_api_docs.py."""
+    fm = re.match(r"^(.*?)\b(s3w_\w+)\s*\((.*)\)\s*S3W_(IMPORT|EXPORT)\((\w+)\)$", stmt)
+    if not fm or fm.group(2) != fm.group(5):
+        raise SystemExit(f"gen.py: cannot parse '{stmt}'")
+    params = []
+    if fm.group(3).strip() != "void":
+        for p in fm.group(3).split(","):
+            pm = re.match(r"^(.*?)(\w+)$", p.strip())
+            params.append((pm.group(2), pm.group(1)))
+    return fm.group(2), fm.group(1), params, fm.group(4).lower()
+
+
 def parse(text):
     src = strip_comments(text)
     consts = []  # (name, value)
@@ -114,15 +128,8 @@ def parse(text):
         stmt = " ".join(stmt.split())
         if "S3W_IMPORT" not in stmt:
             continue
-        fm = re.match(r"^(.*?)\b(s3w_\w+)\s*\((.*)\)\s*S3W_IMPORT\((\w+)\)$", stmt)
-        if not fm or fm.group(2) != fm.group(4):
-            raise SystemExit(f"gen.py: cannot parse '{stmt}'")
-        params = []
-        if fm.group(3).strip() != "void":
-            for p in fm.group(3).split(","):
-                pm = re.match(r"^(.*?)(\w+)$", p.strip())
-                params.append((pm.group(2), pm.group(1)))
-        funcs.append((fm.group(2), fm.group(1), params))
+        name, ret, params, _ = parse_decl(stmt)
+        funcs.append((name, ret, params))
     return consts, structs, order, funcs
 
 

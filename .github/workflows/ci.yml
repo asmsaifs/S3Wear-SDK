@@ -26,6 +26,19 @@ jobs:
       - name: CLI tests
         run: python3 -m unittest discover -s cli/tests
 
+      # Every function in include/s3w.h is documented with @since, and docs/api is what the generator writes.
+      - name: API reference is fresh
+        run: |
+          python3 -m unittest discover -s scripts -p "test_gen*"
+          python3 scripts/gen_api_docs.py --check
+
+      # Links, and every marked code block of the docs builds (C and Rust). Manifests and faces are also checked
+      # against the simulator in the container job below.
+      - name: Developer docs
+        run: |
+          python3 -m unittest discover -s scripts -p "test_check_docs*"
+          python3 scripts/check_docs.py
+
       - name: Examples
         run: examples/build.sh
 

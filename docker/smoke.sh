@@ -43,6 +43,9 @@ for d in examples/apps/*/; do
     shot "$d" "app-$name"
 done
 
+echo "== developer docs (every marked code block, with the simulator's package and face checks)"
+if [ "${REQUIRE_SIM:-0}" = 1 ]; then python3 scripts/check_docs.py --require; else python3 scripts/check_docs.py; fi
+
 echo "== templates"
 for lang in c rust; do
     echo "-- $lang"
@@ -50,4 +53,15 @@ for lang in c rust; do
     s3w build "$work/tpl-$lang"
     shot "$work/tpl-$lang" "template-$lang"
 done
+if [ "$have_sim" = 1 ]; then
+    echo "== face template"
+    s3w new "$work/tpl-face" --face
+    s3w face build "$work/tpl-face" --unsigned
+    s3w face run-sim "$work/tpl-face" --screenshot "$shots/template-face.png"
+    test -s "$shots/template-face.png"
+    echo "== s3w check (the template app, with a listing)"
+    printf '%s\n' '{"developer": "octocat", "summary": "A counter.", "support_url": "https://example.com/support", "source_url": "https://example.com/source", "content_rating": "everyone"}' > "$work/tpl-c/listing.json"
+    s3w check "$work/tpl-c" --monkey-seconds 30 --out "$shots/check"
+    test -s "$shots/check/report.json"
+fi
 echo "smoke: ok"

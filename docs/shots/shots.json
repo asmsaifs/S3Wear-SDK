@@ -1,0 +1,56 @@
+{
+  "shots": [
+    {
+      "name": "counter",
+      "kind": "template",
+      "lang": "c",
+      "script": "shots/counter.txt"
+    },
+    {
+      "name": "bounce",
+      "kind": "app",
+      "project": "projects/first-game",
+      "script": "shots/bounce.txt"
+    },
+    {
+      "name": "sunset",
+      "kind": "face",
+      "project": "projects/first-face"
+    },
+    {
+      "name": "sample-2048",
+      "kind": "app",
+      "sample": "2048",
+      "script": "shots/start.txt"
+    },
+    {
+      "name": "sample-snake",
+      "kind": "app",
+      "sample": "snake",
+      "script": "shots/start.txt"
+    },
+    {
+      "name": "sample-breakout",
+      "kind": "app",
+      "sample": "breakout",
+      "script": "shots/start.txt"
+    },
+    {
+      "name": "sample-calculator",
+      "kind": "app",
+      "sample": "calculator",
+      "script": "shots/start.txt"
+    },
+    {
+      "name": "sample-pomodoro",
+      "kind": "app",
+      "sample": "pomodoro",
+      "script": "shots/start.txt"
+    },
+    {
+      "name": "face-images",
+      "kind": "face",
+      "project": "projects/face-images"
+    }
+  ]
+}

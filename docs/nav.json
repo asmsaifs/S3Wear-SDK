@@ -1,0 +1,243 @@
+{
+  "sections": [
+    {
+      "title": "Start",
+      "pages": [
+        {
+          "path": "index.md",
+          "title": "Documentation home"
+        },
+        {
+          "path": "start/overview.md",
+          "title": "Overview"
+        },
+        {
+          "path": "start/install.md",
+          "title": "Install the SDK"
+        },
+        {
+          "path": "start/first-app-c.md",
+          "title": "Your first app (C)"
+        },
+        {
+          "path": "start/first-app-rust.md",
+          "title": "Your first app (Rust)"
+        },
+        {
+          "path": "start/first-game.md",
+          "title": "Your first game"
+        },
+        {
+          "path": "start/first-face.md",
+          "title": "Your first watch face"
+        }
+      ]
+    },
+    {
+      "title": "Concepts",
+      "pages": [
+        {
+          "path": "concepts/lifecycle.md",
+          "title": "App lifecycle and callbacks"
+        },
+        {
+          "path": "concepts/widgets-vs-canvas.md",
+          "title": "Widgets and canvas"
+        },
+        {
+          "path": "concepts/permissions.md",
+          "title": "Permissions and consent"
+        },
+        {
+          "path": "concepts/limits.md",
+          "title": "Limits and the watchdog"
+        },
+        {
+          "path": "concepts/storage.md",
+          "title": "Storage"
+        },
+        {
+          "path": "concepts/api-level.md",
+          "title": "api_level and compatibility"
+        },
+        {
+          "path": "concepts/packages-and-signing.md",
+          "title": "Packages and signing"
+        }
+      ]
+    },
+    {
+      "title": "Guides",
+      "pages": [
+        {
+          "path": "guides/widgets.md",
+          "title": "Building UIs with widgets"
+        },
+        {
+          "path": "guides/canvas.md",
+          "title": "Canvas drawing and sprites"
+        },
+        {
+          "path": "guides/input.md",
+          "title": "Input: touch, BOOT and gestures"
+        },
+        {
+          "path": "guides/imu.md",
+          "title": "IMU and tilt"
+        },
+        {
+          "path": "guides/sound.md",
+          "title": "Sound"
+        },
+        {
+          "path": "guides/http.md",
+          "title": "HTTP through the phone"
+        },
+        {
+          "path": "guides/highscores.md",
+          "title": "High scores"
+        },
+        {
+          "path": "guides/tiles.md",
+          "title": "Tiles"
+        },
+        {
+          "path": "guides/icons-and-screenshots.md",
+          "title": "Icons and screenshots"
+        },
+        {
+          "path": "guides/performance.md",
+          "title": "Performance on the real watch"
+        },
+        {
+          "path": "guides/testing.md",
+          "title": "Testing with simulator scripts"
+        }
+      ]
+    },
+    {
+      "title": "Watch faces",
+      "pages": [
+        {
+          "path": "faces/overview.md",
+          "title": "Format overview"
+        },
+        {
+          "path": "faces/elements.md",
+          "title": "Elements"
+        },
+        {
+          "path": "faces/bindings.md",
+          "title": "Bindings"
+        },
+        {
+          "path": "faces/fonts.md",
+          "title": "Fonts"
+        },
+        {
+          "path": "faces/complications.md",
+          "title": "Complications"
+        },
+        {
+          "path": "faces/aod.md",
+          "title": "The always-on layout"
+        },
+        {
+          "path": "faces/images.md",
+          "title": "Images"
+        },
+        {
+          "path": "faces/preview.md",
+          "title": "Preview"
+        },
+        {
+          "path": "faces/limits.md",
+          "title": "Limits"
+        }
+      ]
+    },
+    {
+      "title": "Reference",
+      "pages": [
+        {
+          "path": "api/index.md",
+          "title": "C API reference"
+        },
+        {
+          "path": "reference/cli.md",
+          "title": "The s3w command"
+        },
+        {
+          "path": "reference/manifest.md",
+          "title": "manifest.json"
+        },
+        {
+          "path": "reference/face-json.md",
+          "title": "face.json"
+        },
+        {
+          "path": "reference/simulator-scripts.md",
+          "title": "Simulator scripts"
+        },
+        {
+          "path": "reference/errors.md",
+          "title": "Errors and trap messages"
+        }
+      ]
+    },
+    {
+      "title": "Publish",
+      "pages": [
+        {
+          "path": "publish/index.md",
+          "title": "Publish"
+        },
+        {
+          "path": "publish/how-it-works.md",
+          "title": "How the store works"
+        },
+        {
+          "path": "publish/submission.md",
+          "title": "Submission steps"
+        },
+        {
+          "path": "publish/ids-and-ownership.md",
+          "title": "Ids and ownership"
+        },
+        {
+          "path": "publish/review-guidelines.md",
+          "title": "Review guidelines"
+        },
+        {
+          "path": "publish/content-policy.md",
+          "title": "Content policy"
+        },
+        {
+          "path": "publish/privacy-rules.md",
+          "title": "Privacy rules"
+        },
+        {
+          "path": "publish/trademarks.md",
+          "title": "Trademarks"
+        },
+        {
+          "path": "publish/updates-and-takedown.md",
+          "title": "Updates, takedown and appeals"
+        },
+        {
+          "path": "publish/developer-agreement.md",
+          "title": "Developer agreement"
+        }
+      ]
+    },
+    {
+      "title": "Samples",
+      "pages": [
+        {
+          "path": "samples/index.md",
+          "title": "Sample gallery"
+        }
+      ]
+    }
+  ]
+}

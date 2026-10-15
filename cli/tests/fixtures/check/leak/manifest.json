@@ -1,0 +1,1 @@
+{"id": "dev.example.leak", "name": "Leak", "version": "1.0.0", "api_level": 1, "ui_mode": "widgets", "memory_kb": 64, "permissions": []}

@@ -1,0 +1,24 @@
+{
+  "id": "dev.you.sunset",
+  "name": "Sunset",
+  "version": "1.0.0",
+  "api": 1,
+  "author": "You",
+  "description": "Big time, the date and a steps ring.",
+  "background": "#120A1F",
+  "elements": [
+    {"type": "arc", "bind": "steps.goal_ratio", "x": 205, "y": 251, "r": 190, "w": 10,
+     "start": 135, "end": 405, "color": "#FF9F0A", "track": "#2A1A3D"},
+    {"type": "text", "bind": "date.EEE d MMM", "x": 205, "y": 120, "font": "body_26",
+     "color": "#BF5AF2", "upper": true},
+    {"type": "text", "bind": "time.hh:mm", "x": 205, "y": 220, "font": "digits_96", "color": "#FFFFFF"},
+    {"type": "text", "bind": "steps.count", "x": 205, "y": 300, "font": "title_32", "color": "#FF9F0A"},
+    {"type": "text", "text": "steps", "x": 205, "y": 336, "font": "caption_22", "color": "#9A9AA0"},
+    {"type": "complication", "slot": "bottom", "x": 205, "y": 410, "style": "circle", "default": "battery"}
+  ],
+  "aod": {
+    "elements": [
+      {"type": "text", "bind": "time.hh:mm", "x": 205, "y": 251, "font": "digits_96_light", "color": "#6E6E73"}
+    ]
+  }
+}
