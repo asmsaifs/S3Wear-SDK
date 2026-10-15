@@ -1,5 +1,5 @@
 # SDK CI: builds every example and every template, runs the CLI tests. Exported from the private
-# repo (tools/sdk/public/), not edited here. Moves into the dev container with P16-03.
+# repo (tools/sdk/public/), not edited here. The `container` job builds and smoke-tests the dev container (docker/).
 name: ci
 
 on:
@@ -53,3 +53,29 @@ jobs:
       - name: Crates
         run: |
           cargo build --manifest-path rust/s3w/Cargo.toml --target wasm32-unknown-unknown
+
+  # The dev container: the image builds and, inside it, every sample app and template builds and (with the simulator)
+  # starts. The simulator is installed from the firmware site, so set the repository variable
+  # S3W_SIM_PUBLISHED=true once a release has published one; until then the image is built without it.
+  container:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the image
+        run: |
+          with_sim=0; [ "${{ vars.S3W_SIM_PUBLISHED }}" = true ] && with_sim=1
+          docker build -f docker/Dockerfile --build-arg WITH_SIM=$with_sim -t s3w-sdk:ci .
+
+      - name: Smoke test inside the image
+        run: |
+          mkdir -p "$RUNNER_TEMP/shots"
+          docker run --rm -e REQUIRE_SIM="${{ vars.S3W_SIM_PUBLISHED == 'true' && '1' || '0' }}" \
+            -v "$PWD:/work:ro" -v "$RUNNER_TEMP/shots:/shots" s3w-sdk:ci /work/docker/smoke.sh /shots
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: container-screenshots
+          path: ${{ runner.temp }}/shots/
+          if-no-files-found: ignore

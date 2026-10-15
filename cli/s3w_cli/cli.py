@@ -8,6 +8,7 @@
   s3w key [K]                                             its public key, for `app key add` on the watch
   s3w verify <pkg> [--pub HEX]                            check a package
   s3w face build|pack|verify ...                          watch faces (.s3face): s3w face --help
+  s3w sim install [--version V] | update | list           simulator binaries from the firmware site (~/.s3w/sim)
   s3w run-sim [dir] [--script F --screenshot F]           the simulator, reloaded on every change
   s3w install [dir|pkg] --usb [--port P] [--yes] [--trust-key]   install on the watch over USB
   s3w logs [--port P] [--all]                             stream the watch's app logs
@@ -22,7 +23,7 @@ import sys
 import zipfile
 from pathlib import Path
 
-from . import device, s3app, s3face, sim
+from . import device, s3app, s3face, sim, simmgr
 from .project import SDK, BuildError, Project, default_key
 
 
@@ -101,6 +102,19 @@ def cmd_verify(args):
 def cmd_run_sim(args):
     return sim.run(Project(args.dir), sim=args.sim, script=args.script, screenshot=args.screenshot,
                    watch=not args.no_watch)
+
+
+def cmd_sim(args):
+    if args.sim_cmd == "install":
+        simmgr.install(args.version, args.url, args.force)
+    elif args.sim_cmd == "update":
+        simmgr.update(args.url)
+    else:
+        found = simmgr.installed()
+        for v, d in found:
+            print(f"{v}  {d / simmgr.BINARY}")
+        if not found:
+            print("none installed (s3w sim install)")
 
 
 def cmd_install(args):
@@ -186,11 +200,21 @@ def main(argv=None):
     p.set_defaults(fn=cmd_verify)
     p = sub.add_parser("run-sim", help="run in the simulator, reload on change")
     p.add_argument("dir", nargs="?", default=".")
-    p.add_argument("--sim", help="simulator binary (default: build/sim/s3w_sim or $S3W_SIM)")
+    p.add_argument("--sim", help="simulator binary (default: $S3W_SIM, build/sim/s3w_sim, s3w sim install)")
     p.add_argument("--script", help="headless: run this scenario (firmware/test/ui/README.md)")
     p.add_argument("--screenshot", help="headless: write the last frame here")
     p.add_argument("--no-watch", action="store_true", help="do not rebuild on change")
     p.set_defaults(fn=cmd_run_sim)
+    p = sub.add_parser("sim", help="simulator binaries (install, update, list)")
+    ssub = p.add_subparsers(dest="sim_cmd", required=True)
+    sp = ssub.add_parser("install", help="download, verify and unpack a simulator")
+    sp.add_argument("--version", help="release version (default: the latest)")
+    sp.add_argument("--force", action="store_true", help="again, even if installed")
+    sp.add_argument("--url", help="release site (default: $S3W_SIM_URL or the firmware site)")
+    sp = ssub.add_parser("update", help="install the latest if it is newer")
+    sp.add_argument("--url", help="release site (default: $S3W_SIM_URL or the firmware site)")
+    ssub.add_parser("list", help="installed simulators")
+    p.set_defaults(fn=cmd_sim)
     p = sub.add_parser("install", help="install on the watch")
     p.add_argument("target", nargs="?", default=".", help="app directory or .s3app")
     p.add_argument("--usb", action="store_true")
@@ -207,7 +231,7 @@ def main(argv=None):
         fp = fsub.add_parser(name, help=text)
         fp.add_argument("dir", nargs="?", default=".")
         fp.add_argument("--out", help="package path (default: <dir>/build/<id>.s3face)")
-        fp.add_argument("--sim", help="simulator binary (default: build/sim/s3w_sim or $S3W_SIM)")
+        fp.add_argument("--sim", help="simulator binary (default: $S3W_SIM, build/sim/s3w_sim, s3w sim install)")
         signing(fp)
     fp = fsub.add_parser("verify", help="check a face package")
     fp.add_argument("pkg")

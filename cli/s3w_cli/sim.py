@@ -1,4 +1,5 @@
 """`s3w run-sim`: the firmware simulator with the app installed, rebuilt and reloaded on change."""
+import json
 import os
 import shutil
 import subprocess
@@ -6,17 +7,28 @@ import sys
 import time
 from pathlib import Path
 
+from . import simmgr
 from .project import REPO, BuildError
 
 POLL_S = 0.5  # how often the sources are checked; the simulator checks the package as often
 
 
 def find_sim(path=None):
-    cands = [path, os.environ.get("S3W_SIM"), str(REPO / "build" / "sim" / "s3w_sim")]
+    """--sim, $S3W_SIM, a checkout's build/sim, then the newest `s3w sim install`ed one."""
+    cands = [path, os.environ.get("S3W_SIM"), str(REPO / "build" / "sim" / "s3w_sim"), simmgr.latest_installed()]
     for c in cands:
         if c and Path(c).exists():
-            return c
-    raise BuildError("no simulator: set S3W_SIM to the s3w_sim binary or pass --sim")
+            return str(c)
+    raise BuildError("no simulator: run `s3w sim install`, set S3W_SIM to the s3w_sim binary or pass --sim")
+
+
+def sim_info(sim):
+    """`s3w_sim --version` as a dict ({version, api_level, face_api}), or None for a simulator without it."""
+    try:
+        out = subprocess.run([sim, "--version"], capture_output=True, text=True, timeout=10).stdout
+        return json.loads(out)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
 
 
 def _stamps(files):
@@ -34,6 +46,10 @@ def run(project, sim=None, script=None, screenshot=None, watch=True):
     """Builds and packs (unsigned: the simulator accepts it), then runs the simulator with --dev.
     Headless with a script or screenshot; otherwise a window, rebuilt on every source change."""
     sim = find_sim(sim)
+    info = sim_info(sim)
+    if info and project.manifest.get("api_level", 0) > info["api_level"]:
+        print(f"warning: the app asks for api_level {project.manifest['api_level']}, this simulator runs {info['api_level']}"
+              " (`s3w sim update`)", file=sys.stderr)
     project.build()
     pkg = project.pack(key=None, out=project.build_dir / f"{project.id}.sim.s3app")
     cmd = [sim, "--dev", str(pkg)]

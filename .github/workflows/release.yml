@@ -86,6 +86,31 @@ jobs:
           done
           exit 1
 
+  # The dev container ghcr.io/<owner>/s3w-sdk:<version> (and :latest). Needs the simulator of the matching firmware
+  # release to be published already (`s3w sim install` runs in the build). Public package: set its visibility to
+  # public once in the GitHub package settings.
+  container:
+    needs: check
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and smoke test
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/s3w-sdk"
+          echo "IMAGE=$image" >> "$GITHUB_ENV"
+          docker build -f docker/Dockerfile --build-arg VERSION="$v" -t "$image:$v" -t "$image:latest" .
+          mkdir -p "$RUNNER_TEMP/shots"
+          docker run --rm -e REQUIRE_SIM=1 -v "$PWD:/work:ro" -v "$RUNNER_TEMP/shots:/shots" "$image:$v" /work/docker/smoke.sh /shots
+      - name: Push
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker push "$IMAGE:${GITHUB_REF_NAME#v}"
+          docker push "$IMAGE:latest"
+
   github-release:
     needs: [pypi, crates]
     runs-on: ubuntu-24.04
