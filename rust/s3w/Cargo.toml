@@ -1,6 +1,6 @@
 [package]
 name = "s3w"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "Safe wrappers over the S3Wear mini app API for no_std wasm32 apps"
 license = "Apache-2.0"
@@ -10,4 +10,4 @@ keywords = ["smartwatch", "wasm", "esp32", "embedded"]
 categories = ["embedded", "no-std", "wasm"]
 
 [dependencies]
-s3w-sys = { path = "../s3w-sys", version = "0.1.1" }
+s3w-sys = { path = "../s3w-sys", version = "0.1.2" }

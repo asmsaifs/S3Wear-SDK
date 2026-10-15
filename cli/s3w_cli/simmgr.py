@@ -17,6 +17,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+from . import __version__
 from .project import BuildError
 from .s3app import ed25519_verify
 
@@ -89,8 +90,10 @@ def check_manifest(manifest_bytes, signature_hex, public=PUBLIC_KEY, verify=ed25
 def fetch(url):
     if not url.startswith(("https://", "file://")):
         raise BuildError(f"{url}: only https:// (or file://) URLs")
+    # The site is behind Cloudflare, which refuses urllib's default "Python-urllib" agent with a 403.
+    req = urllib.request.Request(url, headers={"User-Agent": f"s3w-cli/{__version__} (+https://s3wear.fiqraat.com/developers/)"})
     try:
-        with urllib.request.urlopen(url, timeout=TIMEOUT_S) as r:
+        with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
             data = r.read(MAX_ZIP + 1)
     except OSError as e:
         raise BuildError(f"{url}: {e}")
